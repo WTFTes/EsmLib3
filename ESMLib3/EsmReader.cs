@@ -1,0 +1,458 @@
+﻿using System.Text;
+using EsmLib3.Enums;
+using EsmLib3.RefIds;
+
+namespace EsmLib3;
+
+public class EsmReader : IDisposable
+{
+    public BinaryReader? BinaryReader { get; private set; }
+
+    private Context mCtx;
+
+    private RecordFlag mRecordFlags;
+
+    private Header mHeader = new();
+    
+    // private Encoding mEncoding = Encoding.UTF8;
+    public Encoding mEncoding { get; set; }= EsmEncoding.English.SystemEncoding;
+
+    private Dictionary<int, int>? _mContentFileMapping = null;
+
+    private long mFileSize;
+    
+    public long getFileSize() => mFileSize;
+
+    public EsmReader()
+    {
+        clearCtx();
+        mCtx.index = 0;
+    }
+
+    public void RestoreContext(Context rc)
+    {
+        if (mCtx.FileName != rc.FileName)
+            openRaw(rc.FileName);
+
+        mCtx = rc;
+
+        BinaryReader!.BaseStream.Seek(mCtx.filePos, SeekOrigin.Begin);
+    }
+
+    public void open(BinaryReader reader, string name)
+    {
+        openRaw(reader, name);
+
+        if (GetRecordName() != RecordName.TES3)
+            throw new Exception("Not a valid Morrowind file");
+
+        GetRecHeader();
+
+        mHeader.Load(this);
+    }
+
+    public void open(string name)
+    {
+        var reader = new BinaryReader(File.OpenRead(name));
+        open(reader, name);
+    }
+
+    private void openRaw(string name)
+    {
+        var reader = new BinaryReader(File.OpenRead(name));
+        openRaw(reader, name);
+    }
+
+    private void openRaw(BinaryReader reader, string name)
+    {
+        close();
+        BinaryReader = reader;
+        mCtx.FileName = name;
+        reader.BaseStream.Seek(0, SeekOrigin.Begin);
+        mCtx.leftFile = mFileSize = reader.BaseStream.Length;
+    }
+
+    private void close()
+    {
+        clearCtx();
+        mHeader.blank();
+    }
+
+    private void clearCtx()
+    {
+        mCtx.FileName = "";
+        mCtx.leftFile = 0;
+        mCtx.leftRec = 0;
+        mCtx.leftSub = 0;
+        mCtx.subCached = false;
+        mCtx.RecName = 0;
+        mCtx.SubName = 0;
+    }
+
+    public EsmData Read()
+    {
+        if (BinaryReader == null)
+            throw new Exception("Not open");
+        
+        EsmData data = new();
+
+        while (HasMoreRecs)
+        {
+            var n = GetRecordName();
+
+            RecordFlag flags = 0;
+            GetRecHeader(ref flags);
+
+            var record = RecordBase.Create(n);
+            if (record == null)
+            {
+                SkipRecord();
+                continue;
+            }
+
+            record.mFlags = flags;
+            record.Load(this);
+
+            data.Records.Add(record);
+        }
+
+        return data;
+    }
+
+    private RecordName GetRecordName()
+    {
+        if (!HasMoreRecs)
+            throw new Exception("No more records");
+        if (HasMoreSubs)
+            throw new Exception("Previous record contains unread bytes");
+        
+        // We went out of the previous record's bounds. Backtrack.
+        if (mCtx.leftRec < 0)
+            BinaryReader.BaseStream.Seek(mCtx.leftRec, SeekOrigin.Current);
+        
+        mCtx.RecName = (RecordName)BinaryReader!.ReadUInt32();
+        mCtx.leftFile -= sizeof(uint);
+        
+        // Make sure we don't carry over any old cached subrecord
+        // names. This can happen in some cases when we skip parts of a
+        // record.
+        mCtx.subCached = false;
+
+        return mCtx.RecName;
+    }
+
+    private void GetRecHeader() => GetRecHeader(ref mRecordFlags);
+    
+    private void GetRecHeader(ref RecordFlag flags)
+    {
+        if (mCtx.leftFile < 3 * sizeof(uint))
+            throw new Exception("End of file while reading record header");
+
+        if (mCtx.leftRec > 0)
+            throw new Exception("Previous record contains unread bytes");
+
+        mCtx.leftRec = BinaryReader!.ReadUInt32();
+        BinaryReader.ReadUInt32(); // This header entry is always zero
+        flags = (RecordFlag)BinaryReader.ReadUInt32();
+        mCtx.leftFile -= 3 * sizeof(uint);
+
+        // Check that sizes add up
+        if (mCtx.leftFile < mCtx.leftRec)
+            ReportSubSizeMismatch(mCtx.leftFile, mCtx.leftRec);
+
+        // Adjust number of bytes mCtx.left in file
+        mCtx.leftFile -= mCtx.leftRec;
+    }
+
+    public void SkipRecord()
+    {
+        skip((uint)mCtx.leftRec);
+        mCtx.leftRec = 0;
+        mCtx.subCached = false;
+    }
+
+    public bool HasMoreRecs => mCtx.leftFile > 0;
+    public bool HasMoreSubs => mCtx.leftRec > 0;
+
+    private void ReportSubSizeMismatch(long want, long got)
+    {
+        throw new Exception($"Record size mismatch, requested {want}, got {got}");
+    }
+
+    public bool IsNextSub(RecordName name)
+    {
+        if (!HasMoreSubs)
+            return false;
+
+        GetSubName();
+
+        mCtx.subCached = mCtx.SubName != name;
+
+        return !mCtx.subCached;
+    }
+
+    public void GetSubName()
+    {
+        if (mCtx.subCached)
+        {
+            mCtx.subCached = false;
+            return;
+        }
+
+        mCtx.SubName = (RecordName)BinaryReader!.ReadUInt32();
+        mCtx.leftRec -= sizeof(uint);
+    }
+
+    public void getSubNameIs(RecordName name)
+    {
+        GetSubName();
+        if (mCtx.SubName != name)
+            throw new Exception($"Expected subrecord {name.ToMagic()} but got {mCtx.SubName.ToMagic()}");
+    }
+
+    public bool getHNOT(RecordName name, ref uint value)
+    {
+        uint val = 0;
+        var res = getHNOT(name, () => { val = BinaryReader!.ReadUInt32(); });
+
+        value = val;
+
+        return res;
+    }
+
+    public bool getHNOT(RecordName name, Action action)
+    {
+        if (IsNextSub(name))
+        {
+            getHT(action);
+            return true;
+        }
+
+        return false;
+    }
+
+    public void getHT(Action action)
+    {
+        // constexpr size_t size = (0 + ... + sizeof(Args));
+        getSubHeader();
+        // if (mCtx.leftSub != size)
+        //     reportSubSizeMismatch(size, mCtx.leftSub);
+        action();
+    }
+
+    public void getHNT(RecordName name, Action action)
+    {
+        // constexpr size_t size = (0 + ... + sizeof(Args));
+        getSubNameIs(name);
+        getSubHeader();
+        // if (mCtx.leftSub != size)
+        //     reportSubSizeMismatch(size, mCtx.leftSub);
+        action();
+    }
+
+    public void getSubHeader()
+    {
+        if (mCtx.leftRec < sizeof(uint))
+            throw new Exception($"End of record while reading sub-record header: {mCtx.leftRec} < 4");
+
+        mCtx.leftSub = BinaryReader!.ReadUInt32();
+        mCtx.leftRec -= sizeof(uint);
+
+        mCtx.leftRec -= mCtx.leftSub;
+    }
+
+    public string getMaybeFixedStringSize(uint size)
+    {
+        if (mHeader.FormatVersion > FormatVersion.MaxLimitedSizeStringsFormatVersion)
+        {
+            size = BinaryReader!.ReadUInt32();
+            if (size > mCtx.leftSub)
+                throw new Exception($"String does not fit subrecord ({size} > {mCtx.leftSub})");
+        }
+
+        return getString(size);
+    }
+
+    public string getString(uint size)
+    {
+        var bytes = BinaryReader!.ReadBytes((int)size).TakeWhile(b => b != 0);
+        
+        return mEncoding.GetString(bytes.ToArray());
+    }
+    
+    public string getHString()
+    {
+        getSubHeader();
+        if (mHeader.FormatVersion > FormatVersion.MaxStringRefIdFormatVersion)
+            return getString(mCtx.leftSub);
+
+        if (mCtx.leftSub == 0 && HasMoreSubs && BinaryReader!.PeekChar() == 0)
+        {
+            --mCtx.leftRec;
+            BinaryReader.ReadChar();
+            return "";
+        }
+
+        return getString(mCtx.leftSub);
+    }
+
+    public string getHNString(RecordName name)
+    {
+        getSubNameIs(name);
+        return getHString();
+    }
+
+    public RefId getHNRefId(RecordName name)
+    {
+        getSubNameIs(name);
+        return getRefId();
+    }
+
+    public RefId getRefId(uint size)
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+            return new StringRefId() { Value = getString(size) };
+        return getRefIdImpl(size);
+    }
+
+    public RefId getRefId()
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+            return new StringRefId() { Value = getHString() };
+        getSubHeader();
+        return getRefIdImpl(mCtx.leftSub);
+    }
+
+    private RefId getRefIdImpl(uint size)
+    {
+         var type = (RefIdType)BinaryReader!.ReadByte();
+
+         switch (type)
+         {
+             case RefIdType.Empty:
+                 return new EmptyRefId();
+             case RefIdType.SizedString:
+             {
+                 var minSize = 1 + 4;
+                 if (size < minSize)
+                     throw new Exception($"Requested RefId record size is too small ({size} < {minSize}");
+
+                 var storedSize = BinaryReader.ReadUInt32();
+                 var maxSize = size - minSize;
+                 if (storedSize > maxSize)
+                     throw new Exception($"RefId string does not fit subrecord size ({storedSize} > {maxSize})");
+
+                 return new StringRefId() { Value = getString(storedSize) };
+             }
+             case RefIdType.UnsizedString:
+             {
+                 if (size < 1)
+                     throw new Exception($"Requested RefId record size is too small ({size} < 1)");
+
+                 return new StringRefId() { Value = getString((uint)(size - 1)) };
+             }
+             case RefIdType.FormId:
+             {
+                 FormId formId = new();
+                 formId.mIndex = BinaryReader.ReadUInt32();
+                 formId.mContentFile = BinaryReader.ReadInt32();
+                 if (applyContentFileMapping(formId))
+                 {
+                     if (formId.isZeroOrUnset())
+                         return new EmptyRefId();
+                     if (formId.hasContentFile())
+                         return formId;
+                     throw new Exception("RefId can't be a generated FormId");
+                 }
+
+                 return new EmptyRefId();
+             }
+             case RefIdType.Generated:
+             {
+                 GeneratedRefId generatedRefId = new();
+                 generatedRefId.Value = BinaryReader.ReadUInt64();
+
+                 return generatedRefId;
+             }
+             case RefIdType.Index:
+             {
+                 IndexRefId indexRefId = new();
+                 indexRefId.RecordType = (RecordName)BinaryReader.ReadInt32();
+                 indexRefId.Value = BinaryReader.ReadUInt32();
+
+                 return indexRefId;
+             }
+             case RefIdType.Esm3ExteriorCell:
+             {
+                 ESM3ExteriorCellRefId esm3ExteriorCellRefId = new();
+                 esm3ExteriorCellRefId.mX = BinaryReader.ReadInt32();
+                 esm3ExteriorCellRefId.mY = BinaryReader.ReadInt32();
+
+                 return esm3ExteriorCellRefId;
+             }
+         }
+         
+         throw new Exception($"Unsupported RefIdType: {type}");
+    }
+
+    public RefId getHNORefId(RecordName name)
+    {
+        if (IsNextSub(name))
+            return getRefId();
+
+        return new EmptyRefId();
+    }
+
+    private bool applyContentFileMapping(FormId formId)
+    {
+        if (_mContentFileMapping != null && formId.hasContentFile())
+        {
+            if (!_mContentFileMapping.TryGetValue(formId.mContentFile, out var mapping))
+                return false;
+
+            formId.mContentFile = mapping;
+        }
+
+        return true;
+    }
+
+    public void Dispose()
+    {
+        BinaryReader?.Dispose();
+    }
+
+    public uint GetSubSize() => mCtx.leftSub;
+    
+    public RecordName retSubName() => mCtx.SubName;
+
+    public RecordFlag getRecordFlags() => mRecordFlags;
+
+    public void skipHSub()
+    {
+        getSubHeader();
+        skip(mCtx.leftSub);
+    }
+
+    public void skip(uint size)
+    {
+        BinaryReader!.BaseStream.Seek(size, SeekOrigin.Current);
+    }
+
+    public FormatVersion getFormatVersion() => mHeader.FormatVersion;
+
+    public RefId getMaybeFixedRefIdSize(uint size)
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+            return new StringRefId() { Value = getMaybeFixedStringSize(size) };
+
+        return getRefIdImpl(mCtx.leftSub);
+    }
+
+    public void cacheSubName() => mCtx.subCached = true;
+
+    public Context getContext()
+    {
+        mCtx.filePos = BinaryReader!.BaseStream.Position;
+        return mCtx;
+    }
+}
