@@ -122,12 +122,12 @@ public class MagicEffect : AbstractRecord
 
     public RefId mBoltSound { get; set; }
 
-    RefId indexToRefId(int index)
+    private RefId indexToRefId(int index)
     {
         if (index == -1)
-            return new EmptyRefId();
+            return new RefId();
 
-        return new IndexRefId() { RecordType = Name, Value = (uint)index };
+        return RefId.Index(Name, (uint)index);
     }
 
     public override void Load(EsmReader reader, out bool isDeleted)
@@ -208,7 +208,7 @@ public class MagicEffect : AbstractRecord
     private static RefId indexToSkillRefId(int index)
     {
         if (index < 0 || index >= sMagicSchools.Count)
-            return new EmptyRefId();
+            return new RefId();
         return sMagicSchools[index];
     }
 

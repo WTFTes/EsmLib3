@@ -127,7 +127,7 @@ public class DialInfo : AbstractRecord
                     break;
                 case RecordName.FNAM:
                     mFaction = reader.getRefId();
-                    if (mFaction is StringRefId { Value: "FFFF" })
+                    if (mFaction == "FFFF")
                         mFactionLess = true;
                     break;
                 case RecordName.ANAM:

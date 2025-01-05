@@ -6,33 +6,33 @@ namespace EsmLib3.Records;
 
 public class Skill : AbstractRecord
 {
-    public static readonly RefId Block = new StringRefId("Block");
-    public static readonly RefId Armorer = new StringRefId("Armorer");
-    public static readonly RefId MediumArmor = new StringRefId("MediumArmor");
-    public static readonly RefId HeavyArmor = new StringRefId("HeavyArmor");
-    public static readonly RefId BluntWeapon = new StringRefId("BluntWeapon");
-    public static readonly RefId LongBlade = new StringRefId("LongBlade");
-    public static readonly RefId Axe = new StringRefId("Axe");
-    public static readonly RefId Spear = new StringRefId("Spear");
-    public static readonly RefId Athletics = new StringRefId("Athletics");
-    public static readonly RefId Enchant = new StringRefId("Enchant");
-    public static readonly RefId Destruction = new StringRefId("Destruction");
-    public static readonly RefId Alteration = new StringRefId("Alteration");
-    public static readonly RefId Illusion = new StringRefId("Illusion");
-    public static readonly RefId Conjuration = new StringRefId("Conjuration");
-    public static readonly RefId Mysticism = new StringRefId("Mysticism");
-    public static readonly RefId Restoration = new StringRefId("Restoration");
-    public static readonly RefId Alchemy = new StringRefId("Alchemy");
-    public static readonly RefId Unarmored = new StringRefId("Unarmored");
-    public static readonly RefId Security = new StringRefId("Security");
-    public static readonly RefId Sneak = new StringRefId("Sneak");
-    public static readonly RefId Acrobatics = new StringRefId("Acrobatics");
-    public static readonly RefId LightArmor = new StringRefId("LightArmor");
-    public static readonly RefId ShortBlade = new StringRefId("ShortBlade");
-    public static readonly RefId Marksman = new StringRefId("Marksman");
-    public static readonly RefId Mercantile = new StringRefId("Mercantile");
-    public static readonly RefId Speechcraft = new StringRefId("Speechcraft");
-    public static readonly RefId HandToHand = new StringRefId("HandToHand");
+    public static readonly RefId Block = RefId.StringRefId("Block");
+    public static readonly RefId Armorer = RefId.StringRefId("Armorer");
+    public static readonly RefId MediumArmor = RefId.StringRefId("MediumArmor");
+    public static readonly RefId HeavyArmor = RefId.StringRefId("HeavyArmor");
+    public static readonly RefId BluntWeapon = RefId.StringRefId("BluntWeapon");
+    public static readonly RefId LongBlade = RefId.StringRefId("LongBlade");
+    public static readonly RefId Axe = RefId.StringRefId("Axe");
+    public static readonly RefId Spear = RefId.StringRefId("Spear");
+    public static readonly RefId Athletics = RefId.StringRefId("Athletics");
+    public static readonly RefId Enchant = RefId.StringRefId("Enchant");
+    public static readonly RefId Destruction = RefId.StringRefId("Destruction");
+    public static readonly RefId Alteration = RefId.StringRefId("Alteration");
+    public static readonly RefId Illusion = RefId.StringRefId("Illusion");
+    public static readonly RefId Conjuration = RefId.StringRefId("Conjuration");
+    public static readonly RefId Mysticism = RefId.StringRefId("Mysticism");
+    public static readonly RefId Restoration = RefId.StringRefId("Restoration");
+    public static readonly RefId Alchemy = RefId.StringRefId("Alchemy");
+    public static readonly RefId Unarmored = RefId.StringRefId("Unarmored");
+    public static readonly RefId Security = RefId.StringRefId("Security");
+    public static readonly RefId Sneak = RefId.StringRefId("Sneak");
+    public static readonly RefId Acrobatics = RefId.StringRefId("Acrobatics");
+    public static readonly RefId LightArmor = RefId.StringRefId("LightArmor");
+    public static readonly RefId ShortBlade = RefId.StringRefId("ShortBlade");
+    public static readonly RefId Marksman = RefId.StringRefId("Marksman");
+    public static readonly RefId Mercantile = RefId.StringRefId("Mercantile");
+    public static readonly RefId Speechcraft = RefId.StringRefId("Speechcraft");
+    public static readonly RefId HandToHand = RefId.StringRefId("HandToHand");
 
     public static readonly RefId[] sSkills =
     [
@@ -89,7 +89,7 @@ public class Skill : AbstractRecord
     private static RefId indexToRefId(int index)
     {
         if (index < 0 || index >= sSkills.Length)
-            return new EmptyRefId();
+            return new RefId();
 
         return sSkills[index];
     }

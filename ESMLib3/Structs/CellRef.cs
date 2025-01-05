@@ -11,7 +11,7 @@ public class CellRef
 {
     // Reference number
     // Note: Currently unused for items in containers
-    public FormId mRefNum { get; set; } = new();
+    public FormId mRefNum;
 
     public RefId mRefId { get; set; } // ID of object being referenced
 
@@ -76,12 +76,12 @@ public class CellRef
     public void blank()
     {
         mRefNum = new FormId();
-        mRefId = new EmptyRefId();
+        mRefId = new RefId();
         mScale = 1;
-        mOwner = new EmptyRefId();
+        mOwner = new RefId();
         mGlobalVariable = "";
-        mSoul = new EmptyRefId();
-        mFaction = new EmptyRefId();
+        mSoul = new RefId();
+        mFaction = new RefId();
         mFactionRank = -2;
         mChargeInt = -1;
         mEnchantmentCharge = -1;
@@ -89,8 +89,8 @@ public class CellRef
         mDestCell = "";
         mLockLevel = 0;
         mIsLocked = false;
-        mKey = new EmptyRefId();
-        mTrap = new EmptyRefId();
+        mKey = new RefId();
+        mTrap = new RefId();
         mReferenceBlocked = -1;
         mTeleport = false;
 

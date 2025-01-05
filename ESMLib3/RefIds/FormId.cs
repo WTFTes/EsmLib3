@@ -1,43 +1,67 @@
 ﻿namespace EsmLib3.RefIds;
 
-public class FormId : RefId
+public struct FormId : IEquatable<FormId>
 {
-    public override RefIdType Type => RefIdType.FormId;
-
-    public uint mIndex { get; set; } = 0;
-    public int mContentFile { get; set; } = -1;
-
-    public bool hasContentFile() => mContentFile >= 0;
-
-    public bool isZeroOrUnset() => mIndex == 0 && (mContentFile == 0 || mContentFile == -1);
-
-    public override bool Equals(RefId? other)
+    public FormId()
     {
-        return other is { Type: RefIdType.FormId } and FormId formId &&
-               formId.mIndex == mIndex && formId.mContentFile == mContentFile;
     }
+
+    public uint Index { get; set; } = 0;
+    public int ContentFile { get; set; } = -1;
+
+    public bool HasContentFile => ContentFile >= 0;
+
+    public bool IsZeroOrUnset => Index == 0 && (ContentFile == 0 || ContentFile == -1);
 
     public override int GetHashCode()
     {
-        return ((long)mIndex << 32 | mContentFile).GetHashCode();
+        return ((ulong)Index << 32 | (ulong)ContentFile).GetHashCode();
     }
 
     public override string ToString()
     {
         ulong value = 0;
         string buf = "";
-        if (mContentFile >= 0)
+        if (ContentFile >= 0)
         {
-            if ((mIndex & 0xff000000) != 0)
-                throw new Exception($"Invalid FormId index value: 0x{mIndex:x}");
-            value = mIndex | ((ulong)mContentFile << 24);
+            if ((Index & 0xff000000) != 0)
+                throw new Exception($"Invalid FormId index value: 0x{Index:x}");
+            value = Index | ((ulong)ContentFile << 24);
         }
         else
         {
             buf = "@";
-            value = mIndex | ((ulong)(-mContentFile - 1) << 32);
+            value = Index | ((ulong)(-ContentFile - 1) << 32);
         }
 
         return buf + $"0x{value:x}";
+    }
+    
+    public string ToDebugString() => $"FormId:{ToString()}";
+
+    public bool Equals(FormId other)
+    {
+        return Index == other.Index && ContentFile == other.ContentFile;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        if (obj == null)
+            return false;
+
+        if (obj.GetType() != GetType())
+            return false;
+
+        return Equals((FormId)obj);
+    }
+
+    public static bool operator ==(FormId left, FormId right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(FormId left, FormId right)
+    {
+        return !(left == right);
     }
 }

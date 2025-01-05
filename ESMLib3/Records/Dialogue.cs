@@ -29,7 +29,7 @@ public class Dialogue : AbstractRecord
         if (reader.getFormatVersion() <= FormatVersion.MaxStringRefIdFormatVersion)
         {
             mStringId = reader.getHNString(RecordName.NAME);
-            mId = new StringRefId(mStringId);
+            mId = RefId.StringRefId(mStringId);
         }
         else if (reader.getFormatVersion() <= FormatVersion.MaxNameIsRefIdOnlyFormatVersion)
             mId = reader.getHNRefId(RecordName.NAME);

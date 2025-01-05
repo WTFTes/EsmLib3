@@ -201,13 +201,13 @@ public class Cell : AbstractRecord
                     {
                         reader.getHT(() =>
                         {
-                            cellRef.mRefNum.mIndex = reader.BinaryReader.ReadUInt32();
-                            cellRef.mRefNum.mContentFile = reader.BinaryReader.ReadInt32();
+                            cellRef.mRefNum.Index = reader.BinaryReader.ReadUInt32();
+                            cellRef.mRefNum.ContentFile = reader.BinaryReader.ReadInt32();
                         });
                     }
                     else
                     {
-                        reader.getHT(() => cellRef.mRefNum.mIndex = reader.BinaryReader.ReadUInt32());
+                        reader.getHT(() => cellRef.mRefNum.Index = reader.BinaryReader.ReadUInt32());
                     }
 
                     cellRef.mRefId = reader.getHNORefId(RecordName.NAME);
@@ -296,13 +296,9 @@ public class Cell : AbstractRecord
     private RefId generateIdForCell(bool exterior, string cellName, int x, int y)
     {
         if (!exterior)
-            return new StringRefId(cellName);
+            return RefId.StringRefId(cellName);
 
-        return new ESM3ExteriorCellRefId()
-        {
-            mX = x,
-            mY = y,
-        };
+        return RefId.Esm3ExteriorCell(x, y);
     }
 
     public override void Save(EsmWriter reader, bool isDeleted)

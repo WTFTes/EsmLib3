@@ -1,5 +1,4 @@
-﻿using System.Text;
-using EsmLib3.Enums;
+﻿using EsmLib3.Enums;
 using EsmLib3.RefIds;
 
 namespace EsmLib3;
@@ -14,8 +13,7 @@ public class EsmReader : IDisposable
 
     private Header mHeader = new();
     
-    // private Encoding mEncoding = Encoding.UTF8;
-    public Encoding mEncoding { get; set; }= EsmEncoding.English.SystemEncoding;
+    public EsmEncoding mEncoding { get; set; } = EsmEncoding.English;
 
     private Dictionary<int, int>? _mContentFileMapping = null;
 
@@ -276,10 +274,10 @@ public class EsmReader : IDisposable
     public string getString(uint size)
     {
         var bytes = BinaryReader!.ReadBytes((int)size).TakeWhile(b => b != 0);
-        
-        return mEncoding.GetString(bytes.ToArray());
+
+        return mEncoding.SystemEncoding.GetString(bytes.ToArray());
     }
-    
+
     public string getHString()
     {
         getSubHeader();
@@ -311,14 +309,14 @@ public class EsmReader : IDisposable
     public RefId getRefId(uint size)
     {
         if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
-            return new StringRefId() { Value = getString(size) };
+            return RefId.StringRefId(getString(size));
         return getRefIdImpl(size);
     }
 
     public RefId getRefId()
     {
         if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
-            return new StringRefId() { Value = getHString() };
+            return RefId.StringRefId(getHString());
         getSubHeader();
         return getRefIdImpl(mCtx.leftSub);
     }
@@ -330,7 +328,7 @@ public class EsmReader : IDisposable
          switch (type)
          {
              case RefIdType.Empty:
-                 return new EmptyRefId();
+                 return new RefId();
              case RefIdType.SizedString:
              {
                  var minSize = 1 + 4;
@@ -342,53 +340,49 @@ public class EsmReader : IDisposable
                  if (storedSize > maxSize)
                      throw new Exception($"RefId string does not fit subrecord size ({storedSize} > {maxSize})");
 
-                 return new StringRefId() { Value = getString(storedSize) };
+                 return RefId.StringRefId(getString(storedSize));
              }
              case RefIdType.UnsizedString:
              {
                  if (size < 1)
                      throw new Exception($"Requested RefId record size is too small ({size} < 1)");
 
-                 return new StringRefId() { Value = getString((uint)(size - 1)) };
+                 return RefId.StringRefId(getString((uint)(size - 1)));
              }
              case RefIdType.FormId:
              {
                  FormId formId = new();
-                 formId.mIndex = BinaryReader.ReadUInt32();
-                 formId.mContentFile = BinaryReader.ReadInt32();
+                 formId.Index = BinaryReader.ReadUInt32();
+                 formId.ContentFile = BinaryReader.ReadInt32();
                  if (applyContentFileMapping(formId))
                  {
-                     if (formId.isZeroOrUnset())
-                         return new EmptyRefId();
-                     if (formId.hasContentFile())
-                         return formId;
+                     if (formId.IsZeroOrUnset)
+                         return new RefId();
+                     if (formId.HasContentFile)
+                         return RefId.FormIdRefId(formId);
                      throw new Exception("RefId can't be a generated FormId");
                  }
 
-                 return new EmptyRefId();
+                 return new RefId();
              }
              case RefIdType.Generated:
              {
-                 GeneratedRefId generatedRefId = new();
-                 generatedRefId.Value = BinaryReader.ReadUInt64();
-
-                 return generatedRefId;
+                 var value = BinaryReader.ReadUInt64();
+                 return RefId.Generated(value);
              }
              case RefIdType.Index:
              {
-                 IndexRefId indexRefId = new();
-                 indexRefId.RecordType = (RecordName)BinaryReader.ReadInt32();
-                 indexRefId.Value = BinaryReader.ReadUInt32();
+                 var recordType = (RecordName)BinaryReader.ReadInt32();
+                 var value = BinaryReader.ReadUInt32();
 
-                 return indexRefId;
+                 return RefId.Index(recordType, value);
              }
              case RefIdType.Esm3ExteriorCell:
              {
-                 ESM3ExteriorCellRefId esm3ExteriorCellRefId = new();
-                 esm3ExteriorCellRefId.mX = BinaryReader.ReadInt32();
-                 esm3ExteriorCellRefId.mY = BinaryReader.ReadInt32();
+                 var x = BinaryReader.ReadInt32();
+                 var y = BinaryReader.ReadInt32();
 
-                 return esm3ExteriorCellRefId;
+                 return RefId.Esm3ExteriorCell(x, y);
              }
          }
          
@@ -400,17 +394,17 @@ public class EsmReader : IDisposable
         if (IsNextSub(name))
             return getRefId();
 
-        return new EmptyRefId();
+        return new RefId();
     }
 
     private bool applyContentFileMapping(FormId formId)
     {
-        if (_mContentFileMapping != null && formId.hasContentFile())
+        if (_mContentFileMapping != null && formId.HasContentFile)
         {
-            if (!_mContentFileMapping.TryGetValue(formId.mContentFile, out var mapping))
+            if (!_mContentFileMapping.TryGetValue(formId.ContentFile, out var mapping))
                 return false;
 
-            formId.mContentFile = mapping;
+            formId.ContentFile = mapping;
         }
 
         return true;
@@ -443,7 +437,7 @@ public class EsmReader : IDisposable
     public RefId getMaybeFixedRefIdSize(uint size)
     {
         if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
-            return new StringRefId() { Value = getMaybeFixedStringSize(size) };
+            return RefId.StringRefId(getMaybeFixedStringSize(size));
 
         return getRefIdImpl(mCtx.leftSub);
     }

@@ -10,23 +10,14 @@ public abstract class AIPackage
 
     public static AIPackage Create(RecordName name)
     {
-        AIPackage? ai = null;
-        switch (name)
+        AIPackage? ai = name switch
         {
-            case RecordName.AI_W:
-                ai = new AIWander();
-                break;
-            case RecordName.AI_T:
-                ai = new AITravel();
-                break;
-            case RecordName.AI_F:
-            case RecordName.AI_E:
-                ai = new AITarget();
-                break;
-            case RecordName.AI_A:
-                ai = new AIActivate();
-                break;
-        }
+            RecordName.AI_W => new AIWander(),
+            RecordName.AI_T => new AITravel(),
+            RecordName.AI_F or RecordName.AI_E => new AITarget(),
+            RecordName.AI_A => new AIActivate(),
+            _ => null
+        };
 
         if (ai == null)
             throw new Exception($"Unknown AI package {name.ToMagic()}");

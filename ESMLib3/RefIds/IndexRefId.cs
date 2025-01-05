@@ -1,26 +1,47 @@
 namespace EsmLib3.RefIds;
 
-public class IndexRefId : RefId
+public struct IndexRefId : IEquatable<IndexRefId>
 {
-    public override RefIdType Type => RefIdType.Index;
+    public IndexRefId()
+    {
+    }
+
+    public IndexRefId(RecordName type, uint value)
+    {
+        RecordType = type;
+        Value = value;
+    }
 
     public RecordName RecordType { get; set; }
-    
-    public uint Value { get; set; }
 
-    public override bool Equals(RefId? other)
-    {
-        return other is { Type: RefIdType.Index } and IndexRefId refId &&
-               refId.RecordType == RecordType && refId.Value == Value;
-    }
+    public uint Value { get; set; }
 
     public override int GetHashCode()
     {
-        return ((long)RecordType << 32 | Value).GetHashCode();
+        return ((ulong)RecordType << 32 | Value).GetHashCode();
     }
 
-    public override string ToString()
+    public override string ToString() => $"{RecordType.ToMagic()}:0x{Value:x}";
+
+    public string ToDebugString() => $"Index:{ToString()}";
+
+    public bool Equals(IndexRefId other)
     {
-        return $"{RecordType.ToMagic()}:0x{Value:x}";
+        return RecordType == other.RecordType && Value == other.Value;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is IndexRefId other && Equals(other);
+    }
+
+    public static bool operator ==(IndexRefId left, IndexRefId right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(IndexRefId left, IndexRefId right)
+    {
+        return !left.Equals(right);
     }
 }

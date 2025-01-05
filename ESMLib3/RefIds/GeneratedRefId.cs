@@ -1,21 +1,44 @@
 ﻿namespace EsmLib3.RefIds;
 
-public class GeneratedRefId : RefId
+public struct GeneratedRefId : IEquatable<GeneratedRefId>
 {
-    public override RefIdType Type => RefIdType.Generated;
-    
-    public ulong Value { get; set; }
-    
-    public override bool Equals(RefId? other)
+    public GeneratedRefId()
     {
-        return other is { Type: RefIdType.Generated } and GeneratedRefId refId &&
-               refId.Value == Value;
+    }
+    
+    public GeneratedRefId(ulong value)
+    {
+        Value = value;
     }
 
+    public ulong Value { get; set; }
+    
     public override int GetHashCode()
     {
         return Value.GetHashCode();
     }
 
     public override string ToString() => $"0x{Value:x}";
+    
+    public string ToDebugString() => $"Generated:{ToString()}";
+
+    public bool Equals(GeneratedRefId other)
+    {
+        return Value == other.Value;
+    }
+
+    public override bool Equals(object? obj)
+    {
+        return obj is GeneratedRefId other && Equals(other);
+    }
+
+    public static bool operator ==(GeneratedRefId left, GeneratedRefId right)
+    {
+        return left.Equals(right);
+    }
+
+    public static bool operator !=(GeneratedRefId left, GeneratedRefId right)
+    {
+        return !left.Equals(right);
+    }
 }
