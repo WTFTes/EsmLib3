@@ -73,6 +73,7 @@ public class EsmReader : IDisposable
     private void close()
     {
         clearCtx();
+        BinaryReader = null;
         mHeader.blank();
     }
 

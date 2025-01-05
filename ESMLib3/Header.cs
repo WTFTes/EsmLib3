@@ -1,7 +1,25 @@
 ﻿namespace EsmLib3;
 
-public class Header
+public struct Header
 {
+    public Header()
+    {
+    }
+    
+    public enum EsmVersions : int
+    {
+        VER_120 = 0x3f99999a, // TES3
+        VER_130 = 0x3fa66666, // TES3
+        VER_080 = 0x3f4ccccd, // TES4
+        VER_100 = 0x3f800000, // TES4, FO4
+        VER_132 = 0x3fa8f5c3, // FONV Courier's Stash, DeadMoney
+        VER_133 = 0x3faa3d71, // FONV HonestHearts
+        VER_134 = 0x3fab851f, // FONV, GunRunnersArsenal, LonesomeRoad, OldWorldBlues
+        VER_094 = 0x3f70a3d7, // TES5/FO3
+        VER_170 = 0x3fd9999a, // TES5
+        VER_095 = 0x3f733333, // FO4
+    };
+    
     public enum DataType : int
     {
         Esp = 0,
@@ -11,12 +29,12 @@ public class Header
 
     public struct Data
     {
-        public RecordName version;
+        public EsmVersions version;
         public DataType type; // 0=esp, 1=esm, 32=ess (unused)
         public string author; // Author's name
         public string desc; // File description
         public int records; // Number of records
-    };
+    }
     
     public struct GMDT
     {
@@ -28,7 +46,8 @@ public class Header
         public byte[] unknown2; // 4
         public byte[] mPlayerName;//32
     };
-    
+   
+    // Defines another files (esm or esp) that this file depends upon.
     struct MasterData
     {
         public string name;
@@ -40,18 +59,22 @@ public class Header
     public FormatVersion FormatVersion = FormatVersion.DefaultFormatVersion;
     private List<MasterData> mMaster = new();
     
-    private GMDT mGameData;
-    private byte[] mSCRD;
-    private byte[] mSCRS;
+    private GMDT mGameData; // Used in .ess savegames only
+    
+    private byte[]? mSCRD; // Used in .ess savegames only, unknown
+    
+    private byte[]? mSCRS; // Used in .ess savegames only, screenshot
 
     public void Load(EsmReader reader)
     {
-        var res =reader.getHNOT(RecordName.FORM, () => FormatVersion = (FormatVersion)reader.BinaryReader.ReadUInt32());
+        var version = FormatVersion.DefaultFormatVersion;
+        reader.getHNOT(RecordName.FORM, () => version = (FormatVersion)reader.BinaryReader.ReadUInt32());
+        FormatVersion = version;
 
         if (reader.IsNextSub(RecordName.HEDR))
         {
             reader.getSubHeader();
-            mData.version = (RecordName)reader.BinaryReader.ReadUInt32();
+            mData.version = (EsmVersions)reader.BinaryReader.ReadUInt32();
             mData.type = (DataType)reader.BinaryReader.ReadInt32();
             mData.author = reader.getMaybeFixedStringSize(32);
             mData.desc = reader.getMaybeFixedStringSize(256);
@@ -66,23 +89,28 @@ public class Header
             mMaster.Add(m);
         }
 
-        reader.getHNOT(RecordName.GMDT, () =>
+        if (reader.IsNextSub(RecordName.GMDT))
         {
-            mGameData = new();
-            mGameData.mCurrentHealth = reader.BinaryReader.ReadSingle();
-            mGameData.mMaximumHealth = reader.BinaryReader.ReadSingle();
-            mGameData.mHour = reader.BinaryReader.ReadSingle();
-            mGameData.unknown1 = reader.BinaryReader.ReadBytes(12);
-            mGameData.mCurrentCell = reader.BinaryReader.ReadBytes(64);
-            mGameData.unknown2 = reader.BinaryReader.ReadBytes(4);
-            mGameData.mPlayerName = reader.BinaryReader.ReadBytes(32);
-        });
+            reader.getSubHeader();
+            
+            GMDT gmdt = new();
+            gmdt.mCurrentHealth = reader.BinaryReader.ReadSingle();
+            gmdt.mMaximumHealth = reader.BinaryReader.ReadSingle();
+            gmdt.mHour = reader.BinaryReader.ReadSingle();
+            gmdt.unknown1 = reader.BinaryReader.ReadBytes(12);
+            gmdt.mCurrentCell = reader.BinaryReader.ReadBytes(64);
+            gmdt.unknown2 = reader.BinaryReader.ReadBytes(4);
+            gmdt.mPlayerName = reader.BinaryReader.ReadBytes(32);
+            mGameData = gmdt;
+        }
 
         if (reader.IsNextSub(RecordName.SCRD))
         {
             reader.getSubHeader();
             if (reader.GetSubSize() > 0)
                 mSCRD = reader.BinaryReader.ReadBytes((int)reader.GetSubSize());
+            else
+                mSCRD = [];
         }
 
         if (reader.IsNextSub(RecordName.SCRS))
@@ -90,17 +118,57 @@ public class Header
             reader.getSubHeader();
             if (reader.GetSubSize() > 0)
                 mSCRS = reader.BinaryReader.ReadBytes((int)reader.GetSubSize());
+            else
+                mSCRS = [];
+        }
+    }
+
+    public void Save(EsmWriter writer)
+    {
+        if (FormatVersion > FormatVersion.DefaultFormatVersion)
+            writer.writeHNT(RecordName.FORM, (int)FormatVersion);
+        
+        writer.startSubRecord(RecordName.HEDR);
+        writer.Write((int)mData.version);
+        writer.Write((int)mData.type);
+        writer.writeMaybeFixedSizeString(mData.author, 32);
+        writer.writeMaybeFixedSizeString(mData.desc, 256);
+        writer.Write(mData.records);
+        writer.endRecord(RecordName.HEDR);
+        
+        foreach (var data in mMaster)
+        {
+            writer.writeHNCString(RecordName.MAST, data.name);
+            writer.writeHNT(RecordName.DATA, data.size);
+        }
+
+        if (mData.type == DataType.Ess)
+        {
+            writer.startSubRecord(RecordName.GMDT);
+            writer.Write(mGameData.mCurrentHealth);
+            writer.Write(mGameData.mMaximumHealth);
+            writer.Write(mGameData.mHour);
+            writer.Write(mGameData.unknown1, 12);
+            writer.Write(mGameData.mCurrentCell, 64);
+            writer.Write(mGameData.unknown2, 4);
+            writer.Write(mGameData.mPlayerName, 32);
+            writer.endRecord(RecordName.GMDT);
+            
+            writer.writeHNT(RecordName.SCRD, mSCRD ?? []);
+            writer.writeHNT(RecordName.SCRS, mSCRS ?? []);
         }
     }
 
     public void blank()
     {
-        mData.version = RecordName.TES3;
+        mData.version = EsmVersions.VER_130;
         mData.type = 0;
         mData.author = "";
         mData.desc = "";
         mData.records = 0;
         FormatVersion = FormatVersion.CurrentContentFormatVersion;
         mMaster.Clear();
+        mSCRD = null;
+        mSCRS = null;
     }
 }

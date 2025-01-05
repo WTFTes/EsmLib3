@@ -78,7 +78,7 @@ public class Faction : AbstractRecord
     
     public string mName { get; set; }
 
-    public RefIdDictionary<int> mReactions = new();
+    public Dictionary<RefId, int> mReactions = new();
 
     public FADTstruct mData { get; } = new();
     
