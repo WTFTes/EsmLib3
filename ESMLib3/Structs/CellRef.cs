@@ -9,6 +9,13 @@ namespace EsmLib3.Structs;
     */
 public class CellRef
 {
+    public CellRef()
+    {
+        blank();
+    }
+
+    private const int ZeroLock = int.MaxValue;
+
     // Reference number
     // Note: Currently unused for items in containers
     public FormId mRefNum;
@@ -73,6 +80,8 @@ public class CellRef
     // Position and rotation of this object within the cell
     public Position mPos { get; set; } = new();
 
+    public MovedCellRef mMovedCell { get; set; }
+
     public void blank()
     {
         mRefNum = new FormId();
@@ -107,5 +116,84 @@ public class CellRef
         mPos.RotX = 0;
         mPos.RotY = 0;
         mPos.RotZ = 0;
+    }
+
+    public void Save(EsmWriter writer, bool wideRefNum, bool inInventory, bool isDeleted)
+    {
+        writer.writeFormId(mRefNum, wideRefNum);
+
+        writer.writeHNCRefId(RecordName.NAME, mRefId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        if (mScale != 1.0)
+            writer.writeHNT(RecordName.XSCL, (float)Math.Clamp(mScale, 0.5f, 2.0f)); // 0.5 to 2.0
+
+        if (!inInventory)
+            writer.writeHNOCRefId(RecordName.ANAM, mOwner);
+
+        writer.writeHNOCString(RecordName.BNAM, mGlobalVariable);
+        writer.writeHNOCRefId(RecordName.XSOL, mSoul);
+
+        if (!inInventory)
+        {
+            writer.writeHNOCRefId(RecordName.CNAM, mFaction);
+            if (mFactionRank != -2)
+            {
+                writer.writeHNT(RecordName.INDX, mFactionRank);
+            }
+        }
+
+        if (mEnchantmentCharge != -1)
+            writer.writeHNT(RecordName.XCHG, mEnchantmentCharge);
+
+        if (mChargeInt != -1)
+            writer.writeHNT(RecordName.INTV, mChargeInt);
+
+        if (mCount != 1)
+            writer.writeHNT(RecordName.NAM9, mCount);
+
+        if (!inInventory && mTeleport)
+        {
+            writer.writeHNT(RecordName.DODT, () =>
+            {
+                writer.Write(mDoorDest.X);
+                writer.Write(mDoorDest.Y);
+                writer.Write(mDoorDest.Z);
+                writer.Write(mDoorDest.RotX);
+                writer.Write(mDoorDest.RotY);
+                writer.Write(mDoorDest.RotZ);
+            });
+            writer.writeHNOCString(RecordName.DNAM, mDestCell);
+        }
+
+        if (!inInventory)
+        {
+            int lockLevel = mLockLevel;
+            if (lockLevel == 0 && mIsLocked)
+                lockLevel = ZeroLock;
+            if (lockLevel != 0)
+                writer.writeHNT(RecordName.FLTV, lockLevel);
+            writer.writeHNOCRefId(RecordName.KNAM, mKey);
+            writer.writeHNOCRefId(RecordName.TNAM, mTrap);
+        }
+
+        if (mReferenceBlocked != -1)
+            writer.writeHNT(RecordName.UNAM, mReferenceBlocked);
+
+        if (!inInventory)
+            writer.writeHNT(RecordName.DATA, () =>
+            {
+                writer.Write(mPos.X);
+                writer.Write(mPos.Y);
+                writer.Write(mPos.Z);
+                writer.Write(mPos.RotX);
+                writer.Write(mPos.RotY);
+                writer.Write(mPos.RotZ);
+            });
     }
 }

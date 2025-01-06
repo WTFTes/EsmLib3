@@ -65,11 +65,12 @@ public class Cell : AbstractRecord
     public int mRefNumCounter { get; set; }
 
     public List<Tuple<CellRef, bool>>[] mCellRefList { get; } = [new(),new()];
-    
+
     public override void Load(EsmReader reader, out bool isDeleted)
     {
         loadNameAndData(reader, out isDeleted);
         loadCell(reader);
+        loadRefs(reader);
     }
 
     private void loadNameAndData(EsmReader reader, out bool isDeleted)
@@ -120,28 +121,17 @@ public class Cell : AbstractRecord
         mHasAmbi = false;
         mHasWaterHeightSub = false;
 
-        CellRef? cellRef = null;
-        MovedCellRef? movedCellRef = null;
-        var refIsDeleted = false;
-        var cellRefList = 0;
-        
-        while (reader.HasMoreSubs)
+        var isLoaded = false;
+        while (!isLoaded && reader.HasMoreSubs)
         {
             reader.GetSubName();
             switch (reader.retSubName())
             {
                 case RecordName.INTV:
-                    if (cellRef == null)
-                    {
-                        reader.getHT(() => { mWater = reader.BinaryReader.ReadInt32(); });
-                        mHasWaterHeightSub = true;
-                    }
-                    else
-                        reader.getHT(() => cellRef.mChargeInt = reader.BinaryReader.ReadInt32());
+                    reader.getHT(() => { mWater = reader.BinaryReader.ReadInt32(); });
+                    mHasWaterHeightSub = true;
                     break;
                 case RecordName.WHGT:
-                    if (cellRef != null)
-                        Debug.WriteLine("");
                     float waterLevel = 0;
                     reader.getHT(() => waterLevel = reader.BinaryReader.ReadSingle());
                     mHasWaterHeightSub = true;
@@ -156,8 +146,6 @@ public class Cell : AbstractRecord
                         mWater = waterLevel;
                     break;
                 case RecordName.AMBI:
-                    if (cellRef != null)
-                        Debug.WriteLine("");
                     reader.getHT(() =>
                     {
                         mAmbi.mAmbient = reader.BinaryReader.ReadUInt32();
@@ -168,30 +156,31 @@ public class Cell : AbstractRecord
                     mHasAmbi = true;
                     break;
                 case RecordName.RGNN:
-                    if (cellRef != null)
-                        Debug.WriteLine("");
                     mRegion = reader.getRefId();
                     break;
                 case RecordName.NAM5:
                     reader.getHT(() => mMapColor = reader.BinaryReader.ReadInt32());
                     break;
-                case RecordName.NAM0:
-                    if (cellRef != null)
-                    {
-                        mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
-                        refIsDeleted = false;
-                        cellRef = null;
-                    }
-                    else
-                    {
-                        Debug.WriteLine("");
-                    }
-
-                    if (cellRefList >= 1)
-                        throw new Exception("Can't be more than one NAM0 within CELL structure");
-                    ++cellRefList;
-                    reader.getHT(() => mRefNumCounter = reader.BinaryReader.ReadInt32());
+                default:
+                    reader.cacheSubName();
+                    isLoaded = true;
                     break;
+            }
+        }
+    }
+
+    private void loadRefs(EsmReader reader)
+    {
+        CellRef? cellRef = null;
+        MovedCellRef? movedCellRef = null;
+        var refIsDeleted = false;
+        var cellRefList = 0;
+        
+        while (reader.HasMoreSubs)
+        {
+            reader.GetSubName();
+            switch (reader.retSubName())
+            {
                 case RecordName.FRMR:
                     if (cellRef != null)
                         mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
@@ -216,11 +205,29 @@ public class Cell : AbstractRecord
                         });
                     }
                     else
-                    {
                         reader.getHT(() => cellRef.mRefNum.Index = reader.BinaryReader.ReadUInt32());
-                    }
 
                     cellRef.mRefId = reader.getHNORefId(RecordName.NAME);
+                    break;
+                case RecordName.INTV:
+                    reader.getHT(() => cellRef.mChargeInt = reader.BinaryReader.ReadInt32());
+                    break;
+                case RecordName.NAM0:
+                    if (cellRef != null)
+                    {
+                        mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
+                        refIsDeleted = false;
+                        cellRef = null;
+                    }
+
+                    if (cellRefList >= 1)
+                        throw new Exception("Can't be more than one NAM0 within CELL structure");
+                    ++cellRefList;
+                    reader.getHT(() => mRefNumCounter = reader.BinaryReader.ReadInt32());
+                    break;
+                case RecordName.DELE:
+                    reader.skipHSub();
+                    refIsDeleted = true;
                     break;
                 case RecordName.XSCL:
                     reader.getHT(() => { cellRef.mScale = reader.BinaryReader.ReadSingle(); });
@@ -302,28 +309,16 @@ public class Cell : AbstractRecord
                     movedCellRef.mRefNum = id;
 
                     break;
-                case RecordName.DELE:
-                    reader.skipHSub();
-                    refIsDeleted = true;
-                    break;
                 default:
                     throw new UnknownSubrecordException(reader.retSubName());
             }
         }
 
+        if (movedCellRef != null)
+            throw new Exception("Moved cell ref without cell itself");
+        
         if (cellRef != null)
-        {
-            if (cellRefList == 1 && reader.mHeader.mData.type == Header.DataType.Esm)
-            {
-                Debug.WriteLine("");
-            }
             mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
-        }
-
-        if (mRefNumCounter != mCellRefList[1].Count)
-        {
-            Debug.WriteLine("");
-        }
     }
 
     private void updateId()
