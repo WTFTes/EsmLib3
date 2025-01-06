@@ -236,4 +236,42 @@ public struct RefId : IEquatable<RefId>
 
         throw new Exception("Unknown ref id type");
     }
+
+    public void Save(EsmWriter writer, bool sized)
+    {
+        var type = Type;
+        if (type == RefIdType.SizedString || type == RefIdType.UnsizedString)
+            type = sized ? RefIdType.SizedString : RefIdType.UnsizedString;
+
+        writer.Write((byte)type);
+        
+        switch (type)
+        {
+            case RefIdType.Empty:
+                return;
+            case RefIdType.SizedString:
+                writer.writeStringWithSize(GetRefIdString());
+                return;
+            case RefIdType.UnsizedString:
+                writer.writeHString(GetRefIdString());
+                return;
+            case RefIdType.FormId:
+                writer.Write(_formId!.Value.Index);
+                writer.Write(_formId!.Value.ContentFile);
+                return;
+            case RefIdType.Generated:
+                writer.Write(_generatedRefId!.Value.Value);
+                return;
+            case RefIdType.Index:
+                writer.Write((int)_indexRefId!.Value.RecordType);
+                writer.Write(_indexRefId!.Value.Value);
+                return;
+            case RefIdType.Esm3ExteriorCell:
+                writer.Write(_esm3ExteriorCellRefId!.Value.X);
+                writer.Write(_esm3ExteriorCellRefId!.Value.Y);
+                return;
+            default:
+                throw new Exception("Unknown ref id type");
+        }
+    }
 }

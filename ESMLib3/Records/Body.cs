@@ -107,8 +107,24 @@ public class Body : AbstractRecord
             throw new MissingSubrecordException(RecordName.BYDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCRefId(RecordName.FNAM, mRace);
+        writer.writeHNT(RecordName.BYDT, () =>
+        {
+            writer.Write((byte)mData.mPart);
+            writer.Write(mData.mVampire);
+            writer.Write((byte)mData.mFlags);
+            writer.Write((byte)mData.mType);
+        });
     }
 }

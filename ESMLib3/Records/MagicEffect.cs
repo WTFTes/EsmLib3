@@ -211,9 +211,46 @@ public class MagicEffect : AbstractRecord
             return new RefId();
         return sMagicSchools[index];
     }
-
-    public override void Save(EsmWriter reader, bool isDeleted)
+    
+    private static int skillRefIdToIndex(RefId id)
     {
-        throw new NotImplementedException();
+        for (var i = 0; i < sMagicSchools.Count; ++i)
+        {
+            if (id == sMagicSchools[i])
+                return i;
+        }
+        return -1;
+    }
+
+    public override void Save(EsmWriter writer, bool isDeleted)
+    {
+        writer.writeHNT(RecordName.INDX, mIndex);
+
+        writer.writeHNT(RecordName.MEDT, () =>
+        {
+            writer.Write(skillRefIdToIndex(mData.mSchool));
+            writer.Write(mData.mBaseCost);
+            writer.Write((int)mData.mFlags);
+            writer.Write(mData.mRed);
+            writer.Write(mData.mGreen);
+            writer.Write(mData.mBlue);
+            writer.Write(mData.mUnknown1);
+            writer.Write(mData.mSpeed);
+            writer.Write(mData.mUnknown2);            
+        });
+
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
+        writer.writeHNOCString(RecordName.PTEX, mParticle);
+        writer.writeHNOCRefId(RecordName.BSND, mBoltSound);
+        writer.writeHNOCRefId(RecordName.CSND, mCastSound);
+        writer.writeHNOCRefId(RecordName.HSND, mHitSound);
+        writer.writeHNOCRefId(RecordName.ASND, mAreaSound);
+
+        writer.writeHNOCRefId(RecordName.CVFX, mCasting);
+        writer.writeHNOCRefId(RecordName.BVFX, mBolt);
+        writer.writeHNOCRefId(RecordName.HVFX, mHit);
+        writer.writeHNOCRefId(RecordName.AVFX, mArea);
+
+        writer.writeHNOString(RecordName.DESC, mDescription);
     }
 }

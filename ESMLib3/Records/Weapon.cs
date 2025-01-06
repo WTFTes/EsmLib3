@@ -38,7 +38,7 @@ public class Weapon : AbstractRecord
     };
 
     [Flags]
-    public enum Flags
+    public enum Flags : int
     {
         None = 0,
         Magical = 0x01,
@@ -57,7 +57,7 @@ public class Weapon : AbstractRecord
         public byte[] mChop { get; } = new byte[2]; // Min and max 
         public byte[] mSlash { get; } = new byte[2];
         public byte[] mThrust { get; } = new byte[2];
-        public Flags mFlags { get; set; }
+        public Flags mFlags { get; set; }   // int32
     }; // 32 bytes
 
     public override RecordName Name => RecordName.WEAP;
@@ -144,8 +144,34 @@ public class Weapon : AbstractRecord
             throw new MissingSubrecordException(RecordName.WPDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.WPDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write((short)mData.mType);
+            writer.Write(mData.mHealth);
+            writer.Write(mData.mSpeed);
+            writer.Write(mData.mReach);
+            writer.Write(mData.mEnchant);
+            writer.Write(mData.mChop);
+            writer.Write(mData.mSlash);
+            writer.Write(mData.mThrust);
+            writer.Write((int)mData.mFlags);
+        });
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
+        writer.writeHNOCRefId(RecordName.ENAM, mEnchant);
     }
 }

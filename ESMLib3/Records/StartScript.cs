@@ -50,8 +50,12 @@ public class StartScript : AbstractRecord
             throw new MissingSubrecordException(RecordName.DATA);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+        if (isDeleted)
+            writer.writeDeleted();
+        else
+            writer.writeHNString(RecordName.DATA, mData);
     }
 }

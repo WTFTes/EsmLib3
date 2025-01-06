@@ -1,25 +1,13 @@
-﻿namespace EsmLib3;
+﻿using EsmLib3.Enums;
+
+namespace EsmLib3;
 
 public struct Header
 {
     public Header()
     {
     }
-    
-    public enum EsmVersions : int
-    {
-        VER_120 = 0x3f99999a, // TES3
-        VER_130 = 0x3fa66666, // TES3
-        VER_080 = 0x3f4ccccd, // TES4
-        VER_100 = 0x3f800000, // TES4, FO4
-        VER_132 = 0x3fa8f5c3, // FONV Courier's Stash, DeadMoney
-        VER_133 = 0x3faa3d71, // FONV HonestHearts
-        VER_134 = 0x3fab851f, // FONV, GunRunnersArsenal, LonesomeRoad, OldWorldBlues
-        VER_094 = 0x3f70a3d7, // TES5/FO3
-        VER_170 = 0x3fd9999a, // TES5
-        VER_095 = 0x3f733333, // FO4
-    };
-    
+   
     public enum DataType : int
     {
         Esp = 0,
@@ -29,7 +17,7 @@ public struct Header
 
     public struct Data
     {
-        public EsmVersions version;
+        public EsmVersion version;
         public DataType type; // 0=esp, 1=esm, 32=ess (unused)
         public string author; // Author's name
         public string desc; // File description
@@ -74,7 +62,7 @@ public struct Header
         if (reader.IsNextSub(RecordName.HEDR))
         {
             reader.getSubHeader();
-            mData.version = (EsmVersions)reader.BinaryReader.ReadUInt32();
+            mData.version = (EsmVersion)reader.BinaryReader.ReadUInt32();
             mData.type = (DataType)reader.BinaryReader.ReadInt32();
             mData.author = reader.getMaybeFixedStringSize(32);
             mData.desc = reader.getMaybeFixedStringSize(256);
@@ -161,7 +149,7 @@ public struct Header
 
     public void blank()
     {
-        mData.version = EsmVersions.VER_130;
+        mData.version = EsmVersion.VER_130;
         mData.type = 0;
         mData.author = "";
         mData.desc = "";

@@ -109,8 +109,30 @@ public class Ingredient : AbstractRecord
         }
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.IRDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            foreach (var eff in mData.mEffectID)
+                writer.Write(eff);
+            foreach (var skill in mData.mSkills)
+                writer.Write(skill);
+            foreach (var attr in mData.mAttributes)
+                writer.Write(attr);
+        });
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
     }
 }

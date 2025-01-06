@@ -55,8 +55,13 @@ public class LandTexture : AbstractRecord
             throw new MissingSubrecordException(RecordName.INTV);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+        writer.writeHNT(RecordName.INTV, mIndex);
+        writer.writeHNCString(RecordName.DATA, mTexture);
+
+        if (isDeleted)
+            writer.writeDeleted();
     }
 }

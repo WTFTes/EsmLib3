@@ -88,8 +88,24 @@ public abstract class LevelledListBase : AbstractRecord
             throw new MissingSubrecordException(RecordName.NAME);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNT(RecordName.DATA, _flags);
+        writer.writeHNT(RecordName.NNAM, mChanceNone);
+        writer.writeHNT(RecordName.INDX, mList.Count);
+
+        foreach (var item in mList)
+        {
+            writer.writeHNCRefId(sRecName, item.mId);
+            writer.writeHNT(RecordName.INTV, item.mLevel);
+        }
     }
 }

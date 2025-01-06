@@ -12,6 +12,8 @@ public struct FormId : IEquatable<FormId>
     public bool HasContentFile => ContentFile >= 0;
 
     public bool IsZeroOrUnset => Index == 0 && (ContentFile == 0 || ContentFile == -1);
+    
+    public bool IsSet => Index != 0 || ContentFile != -1;
 
     public override int GetHashCode()
     {
@@ -63,5 +65,16 @@ public struct FormId : IEquatable<FormId>
     public static bool operator !=(FormId left, FormId right)
     {
         return !(left == right);
+    }
+
+    public uint toUint32()
+    {
+        if (IsSet && !HasContentFile)
+            throw new Exception("Generated FormId can not be converted to 32bit format");
+
+        if (ContentFile > 0xFE)
+            throw new Exception("FormId with mContentFile > 0xFE can not be converted to 32bit format");
+
+        return (Index & 0xffffff) | (uint)((HasContentFile ? ContentFile : 0xff) << 24);
     }
 }

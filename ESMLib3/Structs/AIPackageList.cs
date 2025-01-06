@@ -13,8 +13,11 @@ public class AIPackageList
         {
             if (mList.Count == 0)
                 throw new Exception("AIPackage with an CNDT applying to no cell.");
+
+            if (mList[^1] is not AITarget ai)
+                throw new Exception("Last AI is not AITarget");
             
-            mList[^1].mCellName = reader.getHString();
+            ai.mCellName = reader.getHString();
         }
         else if (reader.retSubName() == RecordName.AI_W)
         {
@@ -76,6 +79,67 @@ public class AIPackageList
 
     public void Save(EsmWriter writer)
     {
-        throw new NotImplementedException();
+        foreach (var package in mList)
+        {
+            switch (package.mType)
+            {
+                case RecordName.AI_W:
+                {
+                    var w = (AIWander)package;
+                    writer.writeHNT(package.mType, () =>
+                    {
+                        writer.Write(w.mDistance);
+                        writer.Write(w.mDuration);
+                        writer.Write(w.mTimeOfDay);
+                        foreach (var i in w.mIdle)
+                            writer.Write(i);
+                        writer.Write(w.mShouldRepeat);
+                    });
+                    break;
+                }
+                case RecordName.AI_T:
+                {
+                    var t = (AITravel)package;
+                    writer.writeHNT(package.mType, () =>
+                    {
+                        writer.Write(t.mX);
+                        writer.Write(t.mY);
+                        writer.Write(t.mZ);
+                        writer.Write(t.mShouldRepeat);  
+                        writer.Write(new byte[3]);
+                    });
+                    break;
+                }
+                case RecordName.AI_A:
+                {
+                    var a = (AIActivate)package;
+                    writer.writeHNT(package.mType, () =>
+                    {
+                        writer.writeHString(a.mName, 32);
+                        writer.Write(a.mShouldRepeat);
+                    });
+                    break;
+                }
+                case RecordName.AI_E:
+                case RecordName.AI_F:
+                {
+                    var t = (AITarget)package;
+                    writer.writeHNT(package.mType, () =>
+                    {
+                        writer.Write(t.mX);
+                        writer.Write(t.mY);
+                        writer.Write(t.mZ);
+                        writer.Write(t.mDuration);
+                        writer.writeHString(t.mId, 32);
+                        writer.Write(t.mShouldRepeat);
+                        writer.Write((byte)0);
+                    });
+                    writer.writeHNOCString(RecordName.CNDT, t.mCellName);
+                    break;
+                }
+                default:
+                    break;
+            }
+        }
     }
 }

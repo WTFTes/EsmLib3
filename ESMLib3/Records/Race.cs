@@ -39,7 +39,7 @@ public class Race : AbstractRecord
         
         public float mFemaleWeight { get; set; }
 
-        public Flags mFlags { get; set; } // 0x1 - playable, 0x2 - beast race
+        public Flags mFlags { get; set; } // 0x1 - playable, 0x2 - beast race (int)
 
         public void Load(EsmReader reader)
         {
@@ -64,9 +64,23 @@ public class Race : AbstractRecord
 
         public void Save(EsmWriter writer)
         {
-            throw new Exception("The method is not implemented."); 
-        }
+            writer.writeHNT(RecordName.RADT, () =>
+            {
+                foreach (var bonus in mBonus)
+                {
+                    writer.Write(bonus.mSkill);
+                    writer.Write(bonus.mBonus);
+                }
 
+                foreach (var attr in mAttributeValues)
+                    writer.Write(attr);
+                writer.Write(mMaleHeight);
+                writer.Write(mFemaleHeight);
+                writer.Write(mMaleWeight);
+                writer.Write(mFemaleWeight);
+                writer.Write((int)mFlags);
+            });
+        }
     }; // Size = 140 bytes
     
     public override RecordName Name => RecordName.RACE;
@@ -130,8 +144,19 @@ public class Race : AbstractRecord
             throw new MissingSubrecordException(RecordName.RADT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        mData.Save(writer);
+        mPowers.Save(writer);
+        writer.writeHNOString(RecordName.DESC, mDescription);
     }
 }

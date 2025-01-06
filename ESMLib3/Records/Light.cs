@@ -113,8 +113,29 @@ public class Light : AbstractRecord
             throw new MissingSubrecordException(RecordName.LHDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
+        writer.writeHNT(RecordName.LHDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write(mData.mTime);
+            writer.Write(mData.mRadius);
+            writer.Write(mData.mColor);
+            writer.Write((int)mData.mFlags);
+        });
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCRefId(RecordName.SNAM, mSound);
     }
 }

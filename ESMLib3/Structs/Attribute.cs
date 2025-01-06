@@ -32,7 +32,7 @@ public class Attribute : AbstractRecord
         throw new NotImplementedException();
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
         throw new NotImplementedException();
     }

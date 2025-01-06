@@ -175,8 +175,55 @@ public class DialInfo : AbstractRecord
         return;
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.INAM, mId);
+        writer.writeHNCRefId(RecordName.PNAM, mPrev);
+        writer.writeHNCRefId(RecordName.NNAM, mNext);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNT(RecordName.DATA, () =>
+        {
+            writer.Write(mData.mUnknown1);
+            writer.Write(mData.mDispositionOrJournalIndex);
+            writer.Write(mData.mRank);
+            writer.Write((sbyte)mData.mGender);
+            writer.Write(mData.mPCrank);
+            writer.Write(mData.mUnknown2);
+        });
+        writer.writeHNOCRefId(RecordName.ONAM, mActor);
+        writer.writeHNOCRefId(RecordName.RNAM, mRace);
+        writer.writeHNOCRefId(RecordName.CNAM, mClass);
+        writer.writeHNOCRefId(RecordName.FNAM, mFaction);
+        writer.writeHNOCRefId(RecordName.ANAM, mCell);
+        writer.writeHNOCRefId(RecordName.DNAM, mPcFaction);
+        writer.writeHNOCString(RecordName.SNAM, mSound);
+        writer.writeHNOString(RecordName.NAME, mResponse);
+
+        foreach (var item in mSelects)
+        {
+            writer.writeHNString(RecordName.SCVR, item.mSelectRule);
+            item.mValue.Write(writer, Variant.Format.Info);
+        }
+
+        writer.writeHNOString(RecordName.BNAM, mResultScript);
+
+        switch (mQuestStatus)
+        {
+            case QuestStatus.QS_Name:
+                writer.writeHNT(RecordName.QSTN, (byte)1);
+                break;
+            case QuestStatus.QS_Finished:
+                writer.writeHNT(RecordName.QSTF, (byte)1);
+                break;
+            case QuestStatus.QS_Restart:
+                writer.writeHNT(RecordName.QSTR, (byte)1);
+                break;
+        }
     }
 }

@@ -27,6 +27,8 @@ public class Region : AbstractRecord
     
     public string mName { get; set; }
     
+    // sleepList refers to a leveled list of creatures you can meet if
+    // you sleep outside in this region.
     public RefId mSleepList { get; set; }
 
     public WEATstruct mData { get; } = new();
@@ -100,8 +102,37 @@ public class Region : AbstractRecord
     }
 
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNOCString(RecordName.FNAM, mName);
+
+        writer.writeHNT(RecordName.WEAT, () =>
+        {
+            var max = mData.mProbabilities.Length;
+            if (writer.getVersion() == EsmVersion.VER_120)
+                max -= 2;
+            for (var i = 0; i < max; ++i)
+                writer.Write(mData.mProbabilities[i]);
+        });
+
+        writer.writeHNOCRefId(RecordName.BNAM, mSleepList);
+
+        writer.writeHNT(RecordName.CNAM, mMapColor);
+        foreach (var sound in mSoundList)
+        {
+            writer.writeHNT(RecordName.SNAM, () =>
+            {
+                writer.writeMaybeFixedSizeRefId(sound.mSound, 32);
+                writer.Write(sound.mChance);
+            });
+        }
     }
 }

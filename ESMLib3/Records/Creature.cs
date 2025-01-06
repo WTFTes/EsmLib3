@@ -72,8 +72,8 @@ public class Creature : AbstractRecord
     public RefId mScript { get; set; }
 
     public NPDTstruct mData { get; set; } = new();
-    
-    public float mScale { get; set; }
+
+    public float mScale { get; set; } = 1.0f;
 
     public InventoryList mInventory { get; set; } = new();
 
@@ -208,8 +208,55 @@ public class Creature : AbstractRecord
             throw new MissingSubrecordException(RecordName.FLAG);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCRefId(RecordName.CNAM, mOriginal);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNT(RecordName.NPDT, () =>
+        {
+            writer.Write((int)mData.mType);
+            writer.Write(mData.mLevel);
+            foreach (var attribute in mData.mAttributes)
+                writer.Write(attribute);
+
+            writer.Write(mData.mHealth);
+            writer.Write(mData.mMana);
+            writer.Write(mData.mFatigue);
+            writer.Write(mData.mSoul);
+            writer.Write(mData.mCombat);
+            writer.Write(mData.mMagic);
+            writer.Write(mData.mStealth);
+            foreach (var att in mData.mAttack)
+                writer.Write(att);
+
+            writer.Write(mData.mGold);
+        });
+        writer.writeHNT(RecordName.FLAG, ((mBloodType << 10) + mFlags));
+        if (mScale != 1.0f)
+            writer.writeHNT(RecordName.XSCL, mScale);
+
+        mInventory.Save(writer);
+        mSpells.Save(writer);
+        writer.writeHNT(RecordName.AIDT, () =>
+        {
+            writer.Write(mAiData.mHello);
+            writer.Write(mAiData.mFight);
+            writer.Write(mAiData.mFlee);
+            writer.Write(mAiData.mAlarm);
+            writer.Write(new byte[3]);
+            writer.Write((int)mAiData.mServices);
+        });
+        mTransport.Save(writer);
+        mAiPackage.Save(writer);
     }
 }

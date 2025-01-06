@@ -30,19 +30,24 @@ public class Faction : AbstractRecord
 
         public void Save(EsmWriter writer)
         {
-            throw new Exception("Not implemented yet");
+            writer.Write(mAttribute1);
+            writer.Write(mAttribute2);
+            writer.Write(mPrimarySkill);
+            writer.Write(mFavouredSkill);
+            writer.Write(mFactReaction);
         }
     };
     
     public class FADTstruct
     {
         // Which attributes we like
-        public readonly int[] mAttribute = new int[2]; // 2
+        public int[] mAttribute { get; } = new int[2]; // 2
 
-        public readonly RankData[] mRankData = new RankData[10];
+        public RankData[] mRankData { get; } = new RankData[10];
 
-        public readonly int[] mSkills = new int[7]; // IDs of skills this faction require
+        public int[] mSkills { get; } = new int[7]; // IDs of skills this faction require
         // Each element will either contain an Skill index, or -1.
+        
         public int mIsHidden { get; set; } // 1 - hidden from player
 
         public void Load(EsmReader reader)
@@ -66,7 +71,15 @@ public class Faction : AbstractRecord
 
         public void Save(EsmWriter writer)
         {
-            throw new Exception("Not implemented yet");
+            writer.startSubRecord(RecordName.FADT);
+            foreach (var attr in mAttribute)
+                writer.Write(attr);
+            foreach (var rank in mRankData)
+                rank.Save(writer);
+            foreach (var t in mSkills)
+                writer.Write(t);
+            writer.Write(mIsHidden);
+            writer.endRecord(RecordName.FADT);
         }
     }; // 240 bytes
     
@@ -138,8 +151,32 @@ public class Faction : AbstractRecord
             throw new MissingSubrecordException(RecordName.FADT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNOCString(RecordName.FNAM, mName);
+
+        foreach (var rank in mRanks)
+        {
+            if (string.IsNullOrEmpty(rank))
+                break;
+
+            writer.writeHNString(RecordName.RNAM, rank, 32);
+        }
+
+        mData.Save(writer);
+
+        foreach (var item in mReactions)
+        {
+            writer.writeHNRefId(RecordName.ANAM, item.Key);
+            writer.writeHNT(RecordName.INTV, item.Value);
+        }
     }
 }

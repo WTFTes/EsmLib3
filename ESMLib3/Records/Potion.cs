@@ -13,26 +13,26 @@ public class Potion : AbstractRecord
         None = 0,
         Autocalc = 1 // Determines value
     }
-    
+
     public class ALDTstruct
     {
         public float mWeight { get; set; }
-        
+
         public int mValue { get; set; }
-        
+
         public Flags mFlags { get; set; } // int32
     }
-    
+
     public RefId mId { get; set; }
-    
+
     public RecordFlag mRecordFlags { get; set; }
-    
+
     public RefId mScript { get; set; }
-    
+
     public string mName { get; set; }
-    
+
     public string mModel { get; set; }
-    
+
     public string mIcon { get; set; }
 
     public EffectList mEffects { get; set; } = new();
@@ -98,8 +98,26 @@ public class Potion : AbstractRecord
             throw new MissingSubrecordException(RecordName.ALDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.TEXT, mIcon);
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.ALDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write((int)mData.mFlags);
+        });
+        mEffects.Save(writer);
     }
 }

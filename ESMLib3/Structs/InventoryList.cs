@@ -23,8 +23,14 @@ public class InventoryList
         mList.Add(ci);
     }
 
-    public void Save(EsmWriter writeR)
+    public void Save(EsmWriter writer)
     {
-        throw new NotImplementedException();
+        foreach (var ci in mList)
+        {
+            writer.startSubRecord(RecordName.NPCO);
+            writer.Write(ci.mCount);
+            writer.writeMaybeFixedSizeRefId(ci.mItem, 32);
+            writer.endRecord(RecordName.NPCO);
+        }
     }
 }

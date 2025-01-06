@@ -99,8 +99,29 @@ public class Book : AbstractRecord
             throw new MissingSubrecordException(RecordName.BKDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.BKDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write(mData.mIsScroll);
+            writer.Write(mData.mSkillId);
+            writer.Write(mData.mEnchant);
+        });
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
+        writer.writeHNOString(RecordName.TEXT, mText);
+        writer.writeHNOCRefId(RecordName.ENAM, mEnchant);
     }
 }

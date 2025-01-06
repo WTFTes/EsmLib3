@@ -94,8 +94,26 @@ public class Apparatus : AbstractRecord
             throw new MissingSubrecordException(RecordName.AADT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.AADT, () =>
+        {
+            writer.Write((int)mData.mType);
+            writer.Write(mData.mQuality);
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+        });
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNCString(RecordName.ITEX, mIcon);
     }
 }

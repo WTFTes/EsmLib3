@@ -126,8 +126,53 @@ public class Land : AbstractRecord
             throw new MissingSubrecordException(RecordName.INTV);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNT(RecordName.INTV, () =>
+        {
+            writer.Write(mX);
+            writer.Write(mY);
+        });
+
+        writer.writeHNT(RecordName.DATA, mFlags);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNT(RecordName.VNML, () =>
+        {
+            foreach (var n in mNormals)
+                writer.Write(n);
+        });
+
+        writer.writeHNT(RecordName.VHGT, () =>
+        {
+            writer.Write(mVHGT.mHeightOffset);
+            foreach (var h in mVHGT.mHeightData)
+                writer.Write(h);
+            writer.Write(mVHGT.mUnk1);
+            writer.Write(mVHGT.mUnk2);
+        });
+
+        writer.writeHNT(RecordName.WNAM, () =>
+        {
+            foreach (var h in mWnam)
+                writer.Write(h);
+        });
+
+        writer.writeHNT(RecordName.VCLR, () =>
+        {
+            foreach (var c in mColours)
+                writer.Write(c);
+        });
+
+        writer.writeHNT(RecordName.VTEX, () =>
+        {
+            foreach (var t in vTex)
+                writer.Write(t);
+        });
     }
 }

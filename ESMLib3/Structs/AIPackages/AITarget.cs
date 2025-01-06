@@ -13,4 +13,6 @@ public class AITarget : AIPackage
     public string mId { get; set; } // NAME32
 
     public byte mShouldRepeat { get; set; }
+    
+    public string mCellName { get; set; }
 }

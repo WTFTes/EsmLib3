@@ -251,8 +251,72 @@ public class Npc : AbstractRecord
         mNpdt.mGold = 0;
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNOCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNCRefId(RecordName.RNAM, mRace);
+        writer.writeHNCRefId(RecordName.CNAM, mClass);
+        writer.writeHNCRefId(RecordName.ANAM, mFaction);
+        writer.writeHNCRefId(RecordName.BNAM, mHead);
+        writer.writeHNCRefId(RecordName.KNAM, mHair);
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+
+        if (mNpdtType == NpcType.NPC_DEFAULT)
+        {
+            writer.writeHNT(RecordName.NPDT, () =>
+            {
+                writer.Write(mNpdt.mLevel);
+                writer.Write(mNpdt.mAttributes);
+                writer.Write(mNpdt.mSkills);
+                writer.Write(mNpdt.mUnknown1);
+                writer.Write(mNpdt.mHealth);
+                writer.Write(mNpdt.mMana);
+                writer.Write(mNpdt.mFatigue);
+                writer.Write(mNpdt.mDisposition);
+                writer.Write(mNpdt.mReputation);
+                writer.Write(mNpdt.mRank);
+                writer.Write(mNpdt.mUnknown2);
+                writer.Write(mNpdt.mGold);
+            });
+        }
+        else if (mNpdtType == NpcType.NPC_WITH_AUTOCALCULATED_STATS)
+        {
+            writer.writeHNT(RecordName.NPDT, () =>
+            {
+                writer.Write(mNpdt.mLevel);
+                writer.Write(mNpdt.mDisposition);
+                writer.Write(mNpdt.mReputation);
+                writer.Write(mNpdt.mRank);
+                writer.Write(new byte[3]);
+                writer.Write(mNpdt.mGold);                
+            });
+        }
+
+        writer.writeHNT(RecordName.FLAG, (int)((mBloodType << 10) + mFlags));
+
+        mInventory.Save(writer);
+        mSpells.Save(writer);
+        writer.writeHNT(RecordName.AIDT, () =>
+        {
+            writer.Write(mAiData.mHello);
+            writer.Write(mAiData.mFight);
+            writer.Write(mAiData.mFlee);
+            writer.Write(mAiData.mAlarm);
+            writer.Write(new byte[3]);
+            writer.Write((int)mAiData.mServices);
+        });
+
+        mTransport.Save(writer);
+
+        mAIPackage.Save(writer);
     }
 }

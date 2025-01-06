@@ -14,6 +14,7 @@ public class SpellList
 
     public void Save(EsmWriter writer)
     {
-        throw new NotImplementedException();
+        foreach (var item in mList)
+            writer.writeHNRefId(RecordName.NPCS, item, 32);
     }
 }

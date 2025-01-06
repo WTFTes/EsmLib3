@@ -26,8 +26,4 @@ public abstract class AIPackage
 
         return ai;
     }
-
-    /// \note for AITarget only, placed here to stick with union,
-    /// overhead should be not so awful
-    public string mCellName { get; set; }
 }

@@ -197,8 +197,35 @@ public class Script : AbstractRecord
         }
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNT(RecordName.SCHD, () =>
+        {
+            writer.writeMaybeFixedSizeRefId(mId, 32);
+            writer.Write(mData.mNumShorts);
+            writer.Write(mData.mNumLongs);
+            writer.Write(mData.mNumFloats);
+            writer.Write(mData.mScriptDataSize);
+            writer.Write(mData.mStringTableSize);
+        });
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        if (mVarNames.Count > 0)
+        {
+            writer.writeHNT(RecordName.SCVR, () =>
+            {
+                foreach (var name in mVarNames)
+                    writer.writeHCString(name);
+            });
+        }
+
+        writer.writeHNT(RecordName.SCDT, mScriptData);
+        
+        writer.writeHNOString(RecordName.SCTX, mScriptText);
     }
 }

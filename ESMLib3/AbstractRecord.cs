@@ -6,5 +6,5 @@ public abstract class AbstractRecord
     
     public abstract void Load(EsmReader reader, out bool isDeleted);
     
-    public abstract void Save(EsmWriter reader, bool isDeleted);
+    public abstract void Save(EsmWriter writer, bool isDeleted);
 }

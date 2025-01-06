@@ -57,6 +57,19 @@ public class EffectList
 
     public void Save(EsmWriter writer)
     {
-        throw new NotImplementedException();
+        foreach (var item in mList)
+        {
+            writer.writeHNT(RecordName.ENAM, () =>
+            {
+                writer.Write(item.mEffectID);
+                writer.Write(item.mSkill);
+                writer.Write(item.mAttribute);
+                writer.Write(item.mRange);
+                writer.Write(item.mArea);
+                writer.Write(item.mDuration);
+                writer.Write(item.mMagnMin);
+                writer.Write(item.mMagnMax);
+            });
+        }
     }
 }

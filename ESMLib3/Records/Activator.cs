@@ -7,15 +7,15 @@ namespace EsmLib3.Records;
 public class Activator : AbstractRecord
 {
     public override RecordName Name => RecordName.ACTI;
-    
+
     public RefId mId { get; set; }
-    
+
     public RecordFlag mRecordFlags { get; set; }
-    
+
     public RefId mScript { get; set; }
-    
+
     public string mName { get; set; }
-    
+
     public string mModel { get; set; }
 
     public override void Load(EsmReader reader, out bool isDeleted)
@@ -50,13 +50,23 @@ public class Activator : AbstractRecord
                     throw new UnknownSubrecordException(reader.retSubName());
             }
         }
-        
+
         if (!hasName)
             throw new MissingSubrecordException(RecordName.NAME);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
     }
 }

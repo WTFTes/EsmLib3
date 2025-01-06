@@ -99,8 +99,31 @@ public class Class : AbstractRecord
             throw new MissingSubrecordException(RecordName.CLDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.CLDT, () =>
+        {
+            for (var i = 0; i < mData.mAttribute.Length; ++i)
+                writer.Write(mData.mAttribute[i]);
+                        
+            writer.Write(mData.mSpecialization);
+
+            for (var i = 0; i < mData.mSkills.GetLength(0); ++i)
+                for (var j = 0; j < mData.mSkills.GetLength(1); ++j)
+                    writer.Write(mData.mSkills[i, j]);
+
+            writer.Write(mData.mIsPlayable);
+            writer.Write(mData.mServices);
+        });
+        writer.writeHNOString(RecordName.DESC, mDescription);
     }
 }

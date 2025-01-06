@@ -161,6 +161,88 @@ public class Variant
         StringValue = reader.getHString();
     }
 
+    public void Write(EsmWriter writer, Format format)
+    {
+        if (Type == VarType.Unknown)
+            throw new Exception("Can't write variant of unknown type");
+
+        if (Type == VarType.None)
+        {
+            if (format == Format.Global)
+                throw new Exception("Can't write variant of type none to global format");
+            if (format == Format.Info)
+                throw new Exception("Can't write variant of type none to info format");
+            if (format == Format.Local)
+                throw new Exception("Can't write variant of type none to local format");
+            // nothing to do for GMST format
+        }
+        else if (Type == VarType.String)
+            WriteStringValue(writer, format);
+        else if (Type == VarType.Int || Type == VarType.Long || Type == VarType.Short)
+            WriteIntValue(writer, format);
+        else if (Type == VarType.Float)
+            WriteFloatValue(writer, format);
+    }
+
+    private void WriteFloatValue(EsmWriter writer, Format format)
+    {
+        if (format == Format.Global)
+        {
+            writer.writeHNString(RecordName.FNAM, "f");
+            writer.writeHNT(RecordName.FLTV, FloatValue);
+        }
+        else if (format == Format.Gmst || format == Format.Info || format == Format.Local)
+        {
+            writer.writeHNT(RecordName.FLTV, FloatValue);
+        }
+    }
+
+    private void WriteIntValue(EsmWriter writer, Format format)
+    {
+        if (format == Format.Global)
+        {
+            if (Type == VarType.Short || Type == VarType.Long)
+            {
+                writer.writeHNString(RecordName.FNAM, Type == VarType.Short ? "s" : "l");
+                writer.writeHNT(RecordName.FLTV, (float)IntValue);
+            }
+            else
+                throw new Exception("unsupported global variable integer type");
+        }
+        else if (format == Format.Gmst || format == Format.Info)
+        {
+            if (Type != VarType.Int)
+                throw new Exception($"Unsupported " + (format == Format.Gmst ? "gmst" : "info") +
+                                    " variable integer type");
+
+            writer.writeHNT(RecordName.INTV, IntValue);
+        }
+        else if (format == Format.Local)
+        {
+            if (Type == VarType.Short)
+                writer.writeHNT(RecordName.STTV, IntValue);
+            else if (Type == VarType.Int)
+                writer.writeHNT(RecordName.INTV, IntValue);
+            else
+                throw new Exception("unsupported local variable integer type");
+        }
+    }
+
+    private void WriteStringValue(EsmWriter writer, Format format)
+    {
+        if (format == Format.Global)
+            throw new Exception("global variables of type string not supported");
+
+        if (format == Format.Info)
+            throw new Exception("info variables of type string not supported");
+
+        if (format == Format.Local)
+            throw new Exception("local variables of type string not supported");
+
+        // GMST
+        writer.writeHNString(RecordName.STRV, StringValue);
+    }
+
     public string StringValue { get; set; }
 
     public int IntValue { get; set; }

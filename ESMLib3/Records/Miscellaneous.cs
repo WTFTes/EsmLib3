@@ -6,7 +6,7 @@ namespace EsmLib3.Records;
 
 public class Miscellaneous : AbstractRecord
 {
-    public enum Flags
+    public enum Flags : int
     {
         None = 0,
         Key = 0x1 // Assigned as a key in the content file that defined the record
@@ -30,7 +30,7 @@ public class Miscellaneous : AbstractRecord
     {
         public float mWeight { get; set; }
         public int mValue { get; set; }
-        public Flags mFlags { get; set; }
+        public Flags mFlags { get; set; }   // int32
     };
     
     public override RecordName Name => RecordName.MISC;
@@ -87,8 +87,25 @@ public class Miscellaneous : AbstractRecord
             throw new MissingSubrecordException(RecordName.MCDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.MCDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write((int)mData.mFlags);
+        });
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
     }
 }

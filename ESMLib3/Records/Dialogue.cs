@@ -71,8 +71,27 @@ public class Dialogue : AbstractRecord
             mStringId = mId.ToString();
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        if (writer.getFormatVersion() <= FormatVersion.MaxStringRefIdFormatVersion)
+        {
+            if (mId != mStringId)
+                throw new Exception(
+                    $"Trying to save Dialogue record with name \"{mStringId}\" not maching id {mId.ToDebugString()}");
+            writer.writeHNString(RecordName.NAME, mStringId);
+        }
+        else if (writer.getFormatVersion() <= FormatVersion.MaxNameIsRefIdOnlyFormatVersion)
+            writer.writeHNRefId(RecordName.NAME, mId);
+        else
+            writer.writeHNRefId(RecordName.ID__, mId);
+
+        if (isDeleted)
+            writer.writeDeleted();
+        else
+        {
+            if (writer.getFormatVersion() > FormatVersion.MaxNameIsRefIdOnlyFormatVersion)
+                writer.writeHNString(RecordName.NAME, mStringId);
+            writer.writeHNT(RecordName.DATA, (sbyte)mType);
+        }
     }
 }

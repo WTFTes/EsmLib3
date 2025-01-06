@@ -43,6 +43,19 @@ public class Transport
 
     public void Save(EsmWriter writer)
     {
-        throw new NotImplementedException();
+        foreach (var t in mList)
+        {
+            writer.writeHNT(RecordName.DODT, () =>
+            {
+                writer.Write(t.mPos.X);
+                writer.Write(t.mPos.Y);
+                writer.Write(t.mPos.Z);
+                writer.Write(t.mPos.RotX);
+                writer.Write(t.mPos.RotY);
+                writer.Write(t.mPos.RotZ);
+            });
+
+            writer.writeHNOCString(RecordName.DNAM, t.mCellName);
+        }
     }
 }

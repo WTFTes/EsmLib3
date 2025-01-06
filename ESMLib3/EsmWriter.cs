@@ -1,4 +1,5 @@
 ﻿using EsmLib3.Enums;
+using EsmLib3.RefIds;
 
 namespace EsmLib3;
 
@@ -22,6 +23,10 @@ public class EsmWriter : IDisposable
 
     private BinaryWriter? BinaryWriter { get; set; }
 
+    public FormatVersion getFormatVersion() => mHeader.FormatVersion;
+
+    public EsmVersion getVersion() => mHeader.mData.version;
+
     public void save(BinaryWriter writer, EsmData data)
     {
         mRecordCount = 0;
@@ -31,6 +36,9 @@ public class EsmWriter : IDisposable
 
         startRecord(RecordName.TES3, RecordFlag.None);
 
+        mHeader = data.Header;
+        mHeader.mData.records = data.Records.Count;
+        
         mHeader.Save(this);
 
         endRecord(RecordName.TES3);
@@ -97,6 +105,13 @@ public class EsmWriter : IDisposable
         writeHString(data);
         endRecord(name);
     }
+    
+    public void writeHNString(RecordName name, string data, int size)
+    {
+        startSubRecord(name);
+        writeHString(data, size);
+        endRecord(name);
+    }
 
     public void writeHNT(RecordName name, Action func)
     {
@@ -161,6 +176,13 @@ public class EsmWriter : IDisposable
         endRecord(name);
     }
     
+    public void writeHNT(RecordName name, float data) 
+    {
+        startSubRecord(name);
+        Write(data);
+        endRecord(name);
+    }
+    
     public void writeHNT(RecordName name, byte[] data) 
     {
         startSubRecord(name);
@@ -168,9 +190,9 @@ public class EsmWriter : IDisposable
         endRecord(name);
     }
 
-    public int writeHString(string data)
+    public int writeHString(string data, int size = 0)
     {
-        if (string.IsNullOrEmpty(data))
+        if (string.IsNullOrEmpty(data) && size == 0)
         {
             Write((byte)0);
 
@@ -179,7 +201,7 @@ public class EsmWriter : IDisposable
         else
         {
             var bytes = mEncoding.SystemEncoding.GetBytes(data);
-            Write(bytes);
+            Write(bytes, size);
 
             return bytes.Length;
         }
@@ -201,18 +223,34 @@ public class EsmWriter : IDisposable
 
     public void writeMaybeFixedSizeString(string data, int size)
     {
-        var bytes = mEncoding.SystemEncoding.GetBytes(data);
-
         if (mHeader.FormatVersion <= FormatVersion.MaxLimitedSizeStringsFormatVersion)
-            Write(bytes, size);
-        else
         {
-            if (bytes.LongLength > uint.MaxValue)
-                throw new Exception(
-                    $"String size is too long: \"{data.Substring(0, 64)}<...>\" ({bytes.LongLength} > {uint.MaxValue})");
-            Write(bytes.Length);
-            Write(bytes);
+            var bytes = mEncoding.SystemEncoding.GetBytes(data);
+            Write(bytes, size);
         }
+        else
+            writeStringWithSize(data);
+    }
+    
+    public void writeMaybeFixedSizeRefId(RefId value, int size)
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+        {
+            writeMaybeFixedSizeString(value.GetRefIdString(), size);
+            return;
+        }
+
+        value.Save(this, true);
+    }
+
+    public void writeStringWithSize(string data)
+    {
+        var bytes = mEncoding.SystemEncoding.GetBytes(data);
+        if (bytes.LongLength > uint.MaxValue)
+            throw new Exception(
+                $"String size is too long: \"{data.Substring(0, 64)}<...>\" ({bytes.LongLength} > {uint.MaxValue})");
+        Write(bytes.Length);
+        Write(bytes);
     }
 
     private void writeName(RecordName name)
@@ -304,5 +342,98 @@ public class EsmWriter : IDisposable
     public void Dispose()
     {
         BinaryWriter?.Dispose();
+    }
+
+    public void writeHNCRefId(RecordName name, RefId value)
+    {
+        startSubRecord(name);
+        writeHCRefId(value);
+        endRecord(name);
+    }
+    
+    public void writeHNRefId(RecordName name, RefId value)
+    {
+        startSubRecord(name);
+        writeHRefId(value);
+        endRecord(name);
+    }
+    
+    public void writeHNRefId(RecordName name, RefId value, int size)
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+        {
+            writeHNString(name, value.GetRefIdString(), size);
+            return;
+        }
+
+        writeHNRefId(name, value);
+    }
+
+    private void writeHCRefId(RefId value)
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+        {
+            writeHCString(value.GetRefIdString());
+            return;
+        }
+
+        writeRefId(value);
+    }
+    
+    private void writeHRefId(RefId value)
+    {
+        if (mHeader.FormatVersion <= FormatVersion.MaxStringRefIdFormatVersion)
+        {
+            writeHString(value.GetRefIdString());
+            return;
+        }
+        
+        writeRefId(value);
+    }
+
+    private void writeRefId(RefId value)
+    {
+        value.Save(this, false);
+    }
+
+    public void writeDeleted()
+    {
+        writeHNString(RecordName.DELE, "", 4);
+    }
+
+    public void writeHNOCString(RecordName name, string data)
+    {
+        if (!string.IsNullOrEmpty(data))
+            writeHNCString(name, data);
+    }
+    
+    public void writeHNOString(RecordName name, string data)
+    {
+        if (!string.IsNullOrEmpty(data))
+            writeHNString(name, data);
+    }
+
+    public void writeHNOCRefId(RecordName name, RefId value)
+    {
+        if (!value.IsEmpty)
+            writeHNCRefId(name, value);
+    }
+
+    public void writeHNORefId(RecordName name, RefId value)
+    {
+        if (!value.IsEmpty)
+            writeHNRefId(name, value);
+    }
+
+    public void writeFormId(FormId formId, bool wide, RecordName tag = RecordName.FRMR)
+    {
+        if (wide)
+            writeHNT(tag, () =>
+            {
+                Write(formId.Index);
+                Write(formId.ContentFile);
+            });
+        else
+            writeHNT(tag, formId.toUint32());
     }
 }

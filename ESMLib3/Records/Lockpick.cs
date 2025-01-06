@@ -86,8 +86,27 @@ public class Lockpick : AbstractRecord
             throw new MissingSubrecordException(RecordName.LKDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeHNString(RecordName.DELE, "", 3);
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+
+        writer.writeHNT(RecordName.LKDT, () =>
+        {
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write(mData.mQuality);
+            writer.Write(mData.mUses);
+        });
+        writer.writeHNORefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
     }
 }

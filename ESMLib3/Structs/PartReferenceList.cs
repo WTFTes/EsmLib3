@@ -21,6 +21,11 @@ public class PartReferenceList
 
     public void Save(EsmWriter writer)
     {
-        throw new NotImplementedException();    
+        foreach (var part in mParts)
+        {
+            writer.writeHNT(RecordName.INDX, (byte)part.mPart);
+            writer.writeHNORefId(RecordName.BNAM, part.mMale);
+            writer.writeHNORefId(RecordName.CNAM, part.mFemale);
+        }
     }
 }

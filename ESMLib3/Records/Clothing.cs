@@ -113,8 +113,31 @@ public class Clothing : AbstractRecord
             throw new MissingSubrecordException(RecordName.CTDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.CTDT, () =>
+        {
+            writer.Write((int)mData.mType);
+            writer.Write(mData.mWeight);
+            writer.Write(mData.mValue);
+            writer.Write(mData.mEnchant);
+        });
+
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCString(RecordName.ITEX, mIcon);
+
+        mParts.Save(writer);
+
+        writer.writeHNOCRefId(RecordName.ENAM, mEnchant);
     }
 }

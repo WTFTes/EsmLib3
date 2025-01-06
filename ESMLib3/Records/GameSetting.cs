@@ -15,15 +15,16 @@ public class GameSetting : AbstractRecord
     
     public override void Load(EsmReader reader, out bool isDeleted)
     {
-        isDeleted = false;
+        isDeleted = false; // GameSetting record can't be deleted now (may be changed in the future)
         mRecordFlags = reader.getRecordFlags();
 
         mId = reader.getHNRefId(RecordName.NAME);
         mValue.Read(reader, Variant.Format.Gmst);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+        mValue.Write(writer, Variant.Format.Gmst);
     }
 }

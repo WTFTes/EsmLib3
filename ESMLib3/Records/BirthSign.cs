@@ -63,8 +63,20 @@ public class BirthSign : AbstractRecord
             throw new MissingSubrecordException(RecordName.NAME);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+        
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNOCString(RecordName.TNAM, mTexture);
+        writer.writeHNOCString(RecordName.DESC, mDescription);
+
+        mPowers.Save(writer);
     }
 }

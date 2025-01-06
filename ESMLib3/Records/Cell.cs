@@ -7,22 +7,6 @@ namespace EsmLib3.Records;
 
 public class Cell : AbstractRecord
 {
-    /* Moved cell reference tracking object. This mainly stores the target cell
-            of the reference, so we can easily know where it has been moved when another
-            plugin tries to move it independently.
-        */
-    public class MovedCellRef
-    {
-        public FormId mRefNum { get; set; } = new();
-
-        // Coordinates of target exterior cell
-        public int[] mTarget { get; } = new int[2];
-
-        // The content file format does not support moving objects to an interior cell.
-        // The save game format does support moving to interior cells, but uses a different mechanism
-        // (see the MovedRefTracker implementation in MWWorld::CellStore for more details).
-    }
-
     [Flags]
     public enum Flags
     {
@@ -75,22 +59,24 @@ public class Cell : AbstractRecord
     
     public int mMapColor { get; set; }
     
+    // Counter for RefNums. This is only used during content file editing and has no impact on gameplay.
+    // It prevents overwriting previous refNums, even if they were deleted.
+    // as that would collide with refs when a content file is upgraded.
     public int mRefNumCounter { get; set; }
-    
-    public List<Tuple<CellRef,bool>> mCellRefList { get; } = new();
+
+    public List<Tuple<CellRef, bool>>[] mCellRefList { get; } = [new(),new()];
     
     public override void Load(EsmReader reader, out bool isDeleted)
     {
         loadNameAndData(reader, out isDeleted);
         loadCell(reader);
-        return;
     }
 
     private void loadNameAndData(EsmReader reader, out bool isDeleted)
     {
         isDeleted = false;
         
-        // blank();
+        blank();
         
         var hasData = false;
         var isLoaded = false;
@@ -134,9 +120,11 @@ public class Cell : AbstractRecord
         mHasAmbi = false;
         mHasWaterHeightSub = false;
 
-        CellRef cellRef = null;
+        CellRef? cellRef = null;
+        MovedCellRef? movedCellRef = null;
         var refIsDeleted = false;
-
+        var cellRefList = 0;
+        
         while (reader.HasMoreSubs)
         {
             reader.GetSubName();
@@ -152,6 +140,8 @@ public class Cell : AbstractRecord
                         reader.getHT(() => cellRef.mChargeInt = reader.BinaryReader.ReadInt32());
                     break;
                 case RecordName.WHGT:
+                    if (cellRef != null)
+                        Debug.WriteLine("");
                     float waterLevel = 0;
                     reader.getHT(() => waterLevel = reader.BinaryReader.ReadSingle());
                     mHasWaterHeightSub = true;
@@ -164,9 +154,10 @@ public class Cell : AbstractRecord
                     }
                     else
                         mWater = waterLevel;
-
                     break;
                 case RecordName.AMBI:
+                    if (cellRef != null)
+                        Debug.WriteLine("");
                     reader.getHT(() =>
                     {
                         mAmbi.mAmbient = reader.BinaryReader.ReadUInt32();
@@ -177,6 +168,8 @@ public class Cell : AbstractRecord
                     mHasAmbi = true;
                     break;
                 case RecordName.RGNN:
+                    if (cellRef != null)
+                        Debug.WriteLine("");
                     mRegion = reader.getRefId();
                     break;
                 case RecordName.NAM5:
@@ -184,15 +177,32 @@ public class Cell : AbstractRecord
                     break;
                 case RecordName.NAM0:
                     if (cellRef != null)
-                        reader.skipHSub();
+                    {
+                        mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
+                        refIsDeleted = false;
+                        cellRef = null;
+                    }
                     else
-                        reader.getHT(() => mRefNumCounter = reader.BinaryReader.ReadInt32());
+                    {
+                        Debug.WriteLine("");
+                    }
+
+                    if (cellRefList >= 1)
+                        throw new Exception("Can't be more than one NAM0 within CELL structure");
+                    ++cellRefList;
+                    reader.getHT(() => mRefNumCounter = reader.BinaryReader.ReadInt32());
                     break;
                 case RecordName.FRMR:
                     if (cellRef != null)
-                        mCellRefList.Add(new(cellRef, refIsDeleted));
+                        mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
 
                     cellRef = new CellRef();
+                    if (movedCellRef != null)
+                    {
+                        cellRef.mMovedCell = movedCellRef;
+                        movedCellRef = null;
+                    }
+                    
                     refIsDeleted = false;
 
                     // cellRef.blank();
@@ -275,6 +285,23 @@ public class Cell : AbstractRecord
                 case RecordName.UNAM:
                     reader.getHT(() => cellRef.mReferenceBlocked = reader.BinaryReader.ReadSByte());
                     break;
+                case RecordName.MVRF:
+                    // MVRF are FRMR are present in pairs. MVRF indicates that following FRMR describes moved CellRef.
+                    if (movedCellRef != null)
+                        throw new Exception("Previous moved cell ref is not null");
+
+                    movedCellRef = new();
+                    FormId id = new();
+                    reader.getHT(() => id.Index = reader.BinaryReader.ReadUInt32());
+                    reader.getHNOT(RecordName.CNDT, () =>
+                    {
+                        for (var i = 0; i < movedCellRef.mTarget.Length; ++i)
+                            movedCellRef.mTarget[i] = reader.BinaryReader.ReadInt32();
+                    });
+
+                    movedCellRef.mRefNum = id;
+
+                    break;
                 case RecordName.DELE:
                     reader.skipHSub();
                     refIsDeleted = true;
@@ -285,7 +312,18 @@ public class Cell : AbstractRecord
         }
 
         if (cellRef != null)
-            mCellRefList.Add(new(cellRef, refIsDeleted));
+        {
+            if (cellRefList == 1 && reader.mHeader.mData.type == Header.DataType.Esm)
+            {
+                Debug.WriteLine("");
+            }
+            mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
+        }
+
+        if (mRefNumCounter != mCellRefList[1].Count)
+        {
+            Debug.WriteLine("");
+        }
     }
 
     private void updateId()
@@ -301,8 +339,90 @@ public class Cell : AbstractRecord
         return RefId.Esm3ExteriorCell(x, y);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCString(RecordName.NAME, mName);
+        writer.writeHNT(RecordName.DATA, () =>
+        {
+            writer.Write((int)mData.mFlags);
+            writer.Write(mData.mX);
+            writer.Write(mData.mY);
+        });
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        if (mData.mFlags.HasFlag(Flags.Interior))
+        {
+            // Try to avoid saving ambient information when it's unnecessary.
+            // This is to fix black lighting and flooded water
+            // in resaved cell records that lack this information.
+            if (mHasWaterHeightSub)
+                writer.writeHNT(RecordName.WHGT, mWater);
+            if (mData.mFlags.HasFlag(Flags.QuasiEx))
+                writer.writeHNOCRefId(RecordName.RGNN, mRegion);
+            else if (mHasAmbi)
+                writer.writeHNT(RecordName.AMBI, () =>
+                {
+                    writer.Write(mAmbi.mAmbient);
+                    writer.Write(mAmbi.mSunlight);
+                    writer.Write(mAmbi.mFog);
+                    writer.Write(mAmbi.mFogDensity);
+                });
+        }
+        else
+        {
+            writer.writeHNOCRefId(RecordName.RGNN, mRegion);
+            if (mMapColor != 0)
+                writer.writeHNT(RecordName.NAM5, mMapColor);
+        }
+
+        // write persistent
+        WriteReferences(writer, mCellRefList[0]);
+        
+        // count of total refs - temp refs
+        if (mRefNumCounter > 0)
+            writer.writeHNT(RecordName.NAM0, mRefNumCounter);
+
+        // write tmp
+        WriteReferences(writer, mCellRefList[1]);
+    }
+
+    private void WriteReferences(EsmWriter writer, List<Tuple<CellRef, bool>> mCellRefs)
+    {
+        foreach (var (r, refDeleted) in mCellRefs)
+        {
+            if (r.mMovedCell != null)
+            {
+                writer.writeFormId(r.mMovedCell.mRefNum, false, RecordName.MVRF);
+                foreach (var c in r.mMovedCell.mTarget)
+                    writer.writeHNT(RecordName.CNDT, c);
+            }
+
+            r.Save(writer, false, false, refDeleted);
+        }
+    }
+
+    private void blank()
+    {
+        mName = "";
+        mRegion = new RefId();
+        mWater = 0;
+        mMapColor = 0;
+        mRefNumCounter = 0;
+
+        mData.mFlags = 0;
+        mData.mX = 0;
+        mData.mY = 0;
+
+        mHasAmbi = true;
+        mHasWaterHeightSub = true;
+        mAmbi.mAmbient = 0;
+        mAmbi.mSunlight = 0;
+        mAmbi.mFog = 0;
+        mAmbi.mFogDensity = 0;
     }
 }

@@ -88,8 +88,23 @@ public class Enchantment : AbstractRecord
             throw new MissingSubrecordException(RecordName.ENDT);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNT(RecordName.ENDT, () =>
+        {
+            writer.Write((int)mData.mType);
+            writer.Write(mData.mCost);
+            writer.Write(mData.mCharge);
+            writer.Write((int)mData.mFlags);
+        });
+        mEffects.Save(writer);
     }
 }

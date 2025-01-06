@@ -30,7 +30,7 @@ public class Container : AbstractRecord
 
     public float mWeight { get; set; }
 
-    public Flags mFlags { get; set; }
+    public Flags mFlags { get; set; } // int32
 
     public InventoryList mInventory { get; set; } = new();
 
@@ -94,8 +94,23 @@ public class Container : AbstractRecord
             throw new MissingSubrecordException(RecordName.FLAG);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNT(RecordName.CNDT, mWeight);
+        writer.writeHNT(RecordName.FLAG, (int)mFlags);
+
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+
+        mInventory.Save(writer);
     }
 }

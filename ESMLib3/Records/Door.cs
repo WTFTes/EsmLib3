@@ -65,8 +65,20 @@ public class Door : AbstractRecord
             throw new MissingSubrecordException(RecordName.NAME);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+        {
+            writer.writeDeleted();
+            return;
+        }
+
+        writer.writeHNCString(RecordName.MODL, mModel);
+        writer.writeHNOCString(RecordName.FNAM, mName);
+        writer.writeHNOCRefId(RecordName.SCRI, mScript);
+        writer.writeHNOCRefId(RecordName.SNAM, mOpenSound);
+        writer.writeHNOCRefId(RecordName.ANAM, mCloseSound);
     }
 }

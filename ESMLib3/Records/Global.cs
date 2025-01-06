@@ -29,8 +29,13 @@ public class Global : AbstractRecord
             mValue.Read(reader, Variant.Format.Global);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNCRefId(RecordName.NAME, mId);
+
+        if (isDeleted)
+            writer.writeDeleted();
+        else
+            mValue.Write(writer, Variant.Format.Global);
     }
 }

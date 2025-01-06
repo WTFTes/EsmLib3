@@ -98,7 +98,7 @@ public class Skill : AbstractRecord
     {
         for (var i = 0; i < sSkills.Length; ++i)
         {
-            if (sSkills[i].Equals(id))
+            if (sSkills[i] == id)
                 return i;
         }
 
@@ -150,8 +150,16 @@ public class Skill : AbstractRecord
         mId = indexToRefId(index);
     }
 
-    public override void Save(EsmWriter reader, bool isDeleted)
+    public override void Save(EsmWriter writer, bool isDeleted)
     {
-        throw new NotImplementedException();
+        writer.writeHNT(RecordName.INDX, refIdToIndex(mId));
+        writer.writeHNT(RecordName.SKDT, () =>
+        {
+            writer.Write(mData.mAttribute);
+            writer.Write(mData.mSpecialization);
+            foreach (var v in mData.mUseValue)
+                writer.Write(v);
+        });
+        writer.writeHNOString(RecordName.DESC, mDescription);
     }
 }
