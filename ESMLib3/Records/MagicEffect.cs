@@ -253,4 +253,28 @@ public class MagicEffect : AbstractRecord
 
         writer.writeHNOString(RecordName.DESC, mDescription);
     }
+    
+    void blank()
+    {
+        mRecordFlags = 0;
+        mData.mSchool = Skill.Alteration;
+        mData.mBaseCost = 0;
+        mData.mFlags = 0;
+        mData.mRed = 0;
+        mData.mGreen = 0;
+        mData.mBlue = 0;
+        mData.mSpeed = 1;
+
+        mIcon = "";
+        mParticle = "";
+        mCasting = new RefId();
+        mHit = new RefId();
+        mArea = new RefId();
+        mBolt = new RefId();
+        mCastSound = new RefId();
+        mBoltSound = new RefId();
+        mHitSound = new RefId();
+        mAreaSound = new RefId();
+        mDescription = "";
+    }
 }

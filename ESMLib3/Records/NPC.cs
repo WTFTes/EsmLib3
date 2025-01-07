@@ -34,8 +34,6 @@ public class Npc : AbstractRecord
         // mSkill can grow up to 200, it must be unsigned
         public byte[] mSkills { get; } = new byte[Skill.sSkills.Length];
 
-        public sbyte mUnknown1 { get; set; }
-        
         public ushort mHealth { get; set; }
         
         public ushort mMana { get; set; }
@@ -48,8 +46,6 @@ public class Npc : AbstractRecord
         
         public byte mRank { get; set; }
 
-        public sbyte mUnknown2 { get; set; }
-        
         public int mGold { get; set; }
     } // 52 bytes
     
@@ -155,14 +151,14 @@ public class Npc : AbstractRecord
                             mNpdt.mAttributes[i] = reader.BinaryReader.ReadByte();
                         for (var i = 0; i < mNpdt.mSkills.Length; ++i)
                             mNpdt.mSkills[i] = reader.BinaryReader.ReadByte();
-                        mNpdt.mUnknown1 = reader.BinaryReader.ReadSByte();
+                        reader.skip(1); // padding
                         mNpdt.mHealth = reader.BinaryReader.ReadUInt16();
                         mNpdt.mMana = reader.BinaryReader.ReadUInt16();
                         mNpdt.mFatigue = reader.BinaryReader.ReadUInt16();
                         mNpdt.mDisposition = reader.BinaryReader.ReadByte();
                         mNpdt.mReputation = reader.BinaryReader.ReadByte();
                         mNpdt.mRank = reader.BinaryReader.ReadByte();
-                        mNpdt.mUnknown2 = reader.BinaryReader.ReadSByte();
+                        reader.skip(1); // padding
                         mNpdt.mGold = reader.BinaryReader.ReadInt32();
                     }
                     else if (reader.GetSubSize() == 12)
@@ -245,9 +241,7 @@ public class Npc : AbstractRecord
         mNpdt.mReputation = 0;
         mNpdt.mHealth = mNpdt.mMana = mNpdt.mFatigue = 0;
         mNpdt.mDisposition = 0;
-        mNpdt.mUnknown1 = 0;
         mNpdt.mRank = 0;
-        mNpdt.mUnknown2 = 0;
         mNpdt.mGold = 0;
     }
 
@@ -277,14 +271,14 @@ public class Npc : AbstractRecord
                 writer.Write(mNpdt.mLevel);
                 writer.Write(mNpdt.mAttributes);
                 writer.Write(mNpdt.mSkills);
-                writer.Write(mNpdt.mUnknown1);
+                writer.Write((byte)0);  // padding
                 writer.Write(mNpdt.mHealth);
                 writer.Write(mNpdt.mMana);
                 writer.Write(mNpdt.mFatigue);
                 writer.Write(mNpdt.mDisposition);
                 writer.Write(mNpdt.mReputation);
                 writer.Write(mNpdt.mRank);
-                writer.Write(mNpdt.mUnknown2);
+                writer.Write((byte)0);  // padding
                 writer.Write(mNpdt.mGold);
             });
         }
@@ -296,7 +290,7 @@ public class Npc : AbstractRecord
                 writer.Write(mNpdt.mDisposition);
                 writer.Write(mNpdt.mReputation);
                 writer.Write(mNpdt.mRank);
-                writer.Write(new byte[3]);
+                writer.Write(new byte[3]);  // padding
                 writer.Write(mNpdt.mGold);                
             });
         }

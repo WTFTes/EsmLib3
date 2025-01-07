@@ -1,13 +1,34 @@
-﻿namespace EsmLib3;
+﻿using EsmLib3.Records;
+
+namespace EsmLib3;
 
 public class EsmData
 {
     public Header Header;
-    public RecordName Format { get; set; }
-    public List<RecordBase> Records { get; set; } = new();
+
+    public EsmEncoding Encoding;
+
+    private List<RecordBase> _records = new();
+
+    public bool HasRaw { get; private set; }
+
+    public IEnumerable<RecordBase> Records => _records;
+    
+    public int RecordCount => _records.Count;
+
+    public void AddRecord(RecordBase record)
+    {
+        _records.Add(record);
+
+        if (record is TypedRecord<RawRecord>)
+            HasRaw = true;
+    }
 
     public Dictionary<RecordName, List<RecordBase>> GetGroupedRecords()
     {
-        return Records.GroupBy(_ => _.mType).ToDictionary(_ => _.Key, _ => _.ToList());
+        return Records.Where(r => r is not TypedRecord<RawRecord>).GroupBy(r => r.mType)
+            .ToDictionary(g => g.Key, _ => _.ToList());
     }
+
+    public IEnumerable<RecordBase> GetRaw() => Records.Where(r => r is TypedRecord<RawRecord>);
 }

@@ -205,7 +205,7 @@ public class Script : AbstractRecord
             writer.Write(mData.mNumShorts);
             writer.Write(mData.mNumLongs);
             writer.Write(mData.mNumFloats);
-            writer.Write(mData.mScriptDataSize);
+            writer.Write(mScriptData.Length);
             writer.Write(mData.mStringTableSize);
         });
 

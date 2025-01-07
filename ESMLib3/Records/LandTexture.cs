@@ -12,12 +12,11 @@ public class LandTexture : AbstractRecord
 {
     public override RecordName Name => RecordName.LTEX;
     
-    // mId is merely a user friendly name for the texture in the editor.
     public RefId mId { get; set; }
     
     public string mTexture { get; set; }
     
-    public int mIndex { get; set; }
+    public uint mIndex { get; set; }
 
     public override void Load(EsmReader reader, out bool isDeleted)
     {
@@ -35,7 +34,7 @@ public class LandTexture : AbstractRecord
                     hasName = true;
                     break;
                 case RecordName.INTV:
-                    reader.getHT(() => mIndex = reader.BinaryReader.ReadInt32());
+                    reader.getHT(() => mIndex = reader.BinaryReader.ReadUInt32());
                     hasIndex = true;
                     break;
                 case RecordName.DATA:

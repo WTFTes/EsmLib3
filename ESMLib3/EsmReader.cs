@@ -1,4 +1,6 @@
-﻿using EsmLib3.Enums;
+﻿using System.Diagnostics;
+using EsmLib3.Enums;
+using EsmLib3.Records;
 using EsmLib3.RefIds;
 
 namespace EsmLib3;
@@ -90,32 +92,77 @@ public class EsmReader : IDisposable
 
     public EsmData Read()
     {
+        return Read(new ReadSettings());
+    }
+
+    public EsmData Read(ReadSettings settings)
+    {
         if (BinaryReader == null)
             throw new Exception("Not open");
-        
-        EsmData data = new();
+
+        EsmData data = new()
+        {
+            Encoding = mEncoding,
+        };
 
         while (HasMoreRecs)
         {
             var n = GetRecordName();
 
-            RecordFlag flags = 0;
-            GetRecHeader(ref flags);
+            GetRecHeader();
 
-            var record = RecordBase.Create(n);
-            if (record == null)
+            var canRaw = false;
+            RecordBase record;
+            if (settings.recordsToGet == null)
+            {
+                record = RecordBase.Create(n);
+                if (record == null)
+                {
+                    if (settings.SkipUnknownRecords)
+                    {
+                        SkipRecord();
+                        continue;
+                    }
+
+                    if (settings.UnknownRecordsToRaw)
+                        record = MakeRawRecord(n);
+                    else
+                        throw new Exception($"Unknown record {n.ToMagic()}");
+                }
+            }
+            else if (settings.recordsToGet.Contains(n))
+            {
+                record = RecordBase.Create(n);
+                if (record == null)
+                    throw new Exception($"Unknown record {n.ToMagic()}");
+            }
+            else if (settings.SkippedRecordsToRaw)
+                record = MakeRawRecord(n);
+            else
             {
                 SkipRecord();
                 continue;
             }
 
-            record.mFlags = flags;
+            record.mFlags = mRecordFlags;
+
             record.Load(this);
 
-            data.Records.Add(record);
+            data.AddRecord(record);
         }
 
+        data.Header = mHeader;
+
         return data;
+    }
+
+    private RecordBase MakeRawRecord(RecordName name)
+    {
+        return new TypedRecord<RawRecord>()
+        {
+            Data = { RawName = name },
+            mType = name
+        };
     }
 
     private RecordName GetRecordName()
@@ -125,10 +172,12 @@ public class EsmReader : IDisposable
         if (HasMoreSubs)
             throw new Exception("Previous record contains unread bytes");
         
-        // We went out of the previous record's bounds. Backtrack.
         if (mCtx.leftRec < 0)
+        {
+            Debug.WriteLine("We went out of the previous record's bounds. Backtrack.");
             BinaryReader.BaseStream.Seek(mCtx.leftRec, SeekOrigin.Current);
-        
+        }
+
         mCtx.RecName = (RecordName)BinaryReader!.ReadUInt32();
         mCtx.leftFile -= sizeof(uint);
         
@@ -140,9 +189,7 @@ public class EsmReader : IDisposable
         return mCtx.RecName;
     }
 
-    private void GetRecHeader() => GetRecHeader(ref mRecordFlags);
-    
-    private void GetRecHeader(ref RecordFlag flags)
+    private void GetRecHeader()
     {
         if (mCtx.leftFile < 3 * sizeof(uint))
             throw new Exception("End of file while reading record header");
@@ -152,7 +199,7 @@ public class EsmReader : IDisposable
 
         mCtx.leftRec = BinaryReader!.ReadUInt32();
         BinaryReader.ReadUInt32(); // This header entry is always zero
-        flags = (RecordFlag)BinaryReader.ReadUInt32();
+        mRecordFlags = (RecordFlag)BinaryReader.ReadUInt32();
         mCtx.leftFile -= 3 * sizeof(uint);
 
         // Check that sizes add up
@@ -450,4 +497,19 @@ public class EsmReader : IDisposable
         mCtx.filePos = BinaryReader!.BaseStream.Position;
         return mCtx;
     }
+
+    public byte[] GetRawRecord()
+    {
+        var leftRec = mCtx.leftRec;
+
+        mCtx.leftRec = 0;
+        mCtx.leftSub = 0;
+        mCtx.subCached = false;
+
+        return BinaryReader.ReadBytes((int)leftRec);
+    }
+
+    public List<int> getParentFileIndices() => mCtx.parentFileIndices;
+
+    public int getIndex() => mCtx.index;
 }

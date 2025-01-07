@@ -3,7 +3,6 @@
 public class TypedRecord<T> : RecordBase where T : AbstractRecord, new()
 {
     public T Data { get; } = new();
-    public bool IsDeleted { get; set; }
 
     public override void Load(EsmReader reader)
     {

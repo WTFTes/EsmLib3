@@ -14,7 +14,7 @@ public class CellRef
         blank();
     }
 
-    private const int ZeroLock = int.MaxValue;
+    public const int ZeroLock = int.MaxValue;
 
     // Reference number
     // Note: Currently unused for items in containers
@@ -173,12 +173,15 @@ public class CellRef
 
         if (!inInventory)
         {
-            int lockLevel = mLockLevel;
-            if (lockLevel == 0 && mIsLocked)
-                lockLevel = ZeroLock;
-            if (lockLevel != 0)
+            if (mIsLocked)
+            {
+                var lockLevel = mLockLevel;
+                if (lockLevel == 0)
+                    lockLevel = ZeroLock;
                 writer.writeHNT(RecordName.FLTV, lockLevel);
-            writer.writeHNOCRefId(RecordName.KNAM, mKey);
+                writer.writeHNOCRefId(RecordName.KNAM, mKey);
+            }
+
             writer.writeHNOCRefId(RecordName.TNAM, mTrap);
         }
 

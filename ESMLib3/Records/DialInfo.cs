@@ -23,7 +23,7 @@ public class DialInfo : AbstractRecord
 
     public class DATAstruct
     {
-        public int mUnknown1 { get; set; }
+        public int mType { get; set; } // See Dialogue::Type
 
         // Used for dialogue responses
         // Used for journal entries
@@ -34,8 +34,6 @@ public class DialInfo : AbstractRecord
         public Gender mGender { get; set; } = Gender.NA;    // sbyte
         
         public sbyte mPCrank { get; set; } = -1; // Player rank
-        
-        public sbyte mUnknown2 { get; set; }
     }
     
     // The rules for whether or not we will select this dialog item.
@@ -108,12 +106,12 @@ public class DialInfo : AbstractRecord
                 case RecordName.DATA:
                     reader.getHT(() =>
                     {
-                        mData.mUnknown1 = reader.BinaryReader.ReadInt32();
+                        mData.mType = reader.BinaryReader.ReadInt32();
                         mData.mDispositionOrJournalIndex = reader.BinaryReader.ReadInt32();
                         mData.mRank = reader.BinaryReader.ReadSByte();
                         mData.mGender = (Gender)reader.BinaryReader.ReadSByte();
                         mData.mPCrank = reader.BinaryReader.ReadSByte();
-                        mData.mUnknown2 = reader.BinaryReader.ReadSByte();
+                        reader.skip(1); // padding
                     });
                     break;
                 case RecordName.ONAM:
@@ -189,12 +187,12 @@ public class DialInfo : AbstractRecord
 
         writer.writeHNT(RecordName.DATA, () =>
         {
-            writer.Write(mData.mUnknown1);
+            writer.Write(mData.mType);
             writer.Write(mData.mDispositionOrJournalIndex);
             writer.Write(mData.mRank);
             writer.Write((sbyte)mData.mGender);
             writer.Write(mData.mPCrank);
-            writer.Write(mData.mUnknown2);
+            writer.Write((byte)0);  // padding
         });
         writer.writeHNOCRefId(RecordName.ONAM, mActor);
         writer.writeHNOCRefId(RecordName.RNAM, mRace);

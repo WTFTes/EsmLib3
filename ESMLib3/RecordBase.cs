@@ -6,9 +6,11 @@ namespace EsmLib3;
 
 public abstract class RecordBase
 {
-    public string mId;
     public RecordFlag mFlags;
+    
     public RecordName mType;
+    
+    public bool IsDeleted { get; set; }
 
     public static RecordBase? Create(RecordName name)
     {

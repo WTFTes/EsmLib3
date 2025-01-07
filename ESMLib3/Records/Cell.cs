@@ -64,7 +64,7 @@ public class Cell : AbstractRecord
     // as that would collide with refs when a content file is upgraded.
     public int mRefNumCounter { get; set; }
 
-    public List<Tuple<CellRef, bool>>[] mCellRefList { get; } = [new(),new()];
+    public List<Tuple<CellRef, bool>>[] mCellRefList { get; } = [[], []];
 
     public override void Load(EsmReader reader, out bool isDeleted)
     {
@@ -175,7 +175,7 @@ public class Cell : AbstractRecord
         MovedCellRef? movedCellRef = null;
         var refIsDeleted = false;
         var cellRefList = 0;
-        
+
         while (reader.HasMoreSubs)
         {
             reader.GetSubName();
@@ -183,7 +183,7 @@ public class Cell : AbstractRecord
             {
                 case RecordName.FRMR:
                     if (cellRef != null)
-                        mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
+                        AddCellRef(reader, cellRef, cellRefList, refIsDeleted);
 
                     cellRef = new CellRef();
                     if (movedCellRef != null)
@@ -191,10 +191,9 @@ public class Cell : AbstractRecord
                         cellRef.mMovedCell = movedCellRef;
                         movedCellRef = null;
                     }
-                    
+
                     refIsDeleted = false;
 
-                    // cellRef.blank();
                     var wide = false;
                     if (wide)
                     {
@@ -207,7 +206,9 @@ public class Cell : AbstractRecord
                     else
                         reader.getHT(() => cellRef.mRefNum.Index = reader.BinaryReader.ReadUInt32());
 
-                    cellRef.mRefId = reader.getHNORefId(RecordName.NAME);
+                    break;
+                case RecordName.NAME:
+                    cellRef.mRefId = reader.getRefId();
                     break;
                 case RecordName.INTV:
                     reader.getHT(() => cellRef.mChargeInt = reader.BinaryReader.ReadInt32());
@@ -215,7 +216,7 @@ public class Cell : AbstractRecord
                 case RecordName.NAM0:
                     if (cellRef != null)
                     {
-                        mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
+                        AddCellRef(reader, cellRef, cellRefList, refIsDeleted);
                         refIsDeleted = false;
                         cellRef = null;
                     }
@@ -316,9 +317,24 @@ public class Cell : AbstractRecord
 
         if (movedCellRef != null)
             throw new Exception("Moved cell ref without cell itself");
-        
+
         if (cellRef != null)
-            mCellRefList[cellRefList].Add(new(cellRef, refIsDeleted));
+            AddCellRef(reader, cellRef, cellRefList, refIsDeleted);
+    }
+
+    private void AddCellRef(EsmReader reader, CellRef cellRef, int cellRefList, bool isDeleted)
+    {
+        cellRef.mRefNum = adjustRefNum(cellRef.mRefNum, reader);
+
+        if (reader.getFormatVersion() == FormatVersion.DefaultFormatVersion) // loading a content file
+            cellRef.mIsLocked = !cellRef.mKey.IsEmpty || cellRef.mLockLevel > 0;
+        else
+            cellRef.mIsLocked = cellRef.mLockLevel > 0;
+
+        if (cellRef.mLockLevel == CellRef.ZeroLock)
+            cellRef.mLockLevel = 0;
+
+        mCellRefList[cellRefList].Add(new(cellRef, isDeleted));
     }
 
     private void updateId()
@@ -419,5 +435,28 @@ public class Cell : AbstractRecord
         mAmbi.mSunlight = 0;
         mAmbi.mFog = 0;
         mAmbi.mFogDensity = 0;
+    }
+    
+    // Translate 8bit/24bit code (stored in refNum.mIndex) into a proper refNum
+    private FormId adjustRefNum(FormId refNum, EsmReader reader)
+    {
+        var local = (refNum.Index & 0xff000000) >> 24;
+
+        // If we have an index value that does not make sense, assume that it was an addition
+        // by the present plugin (but a faulty one)
+        if (local > 0 && local <= reader.getParentFileIndices().Count)
+        {
+            // If the most significant 8 bits are used, then this reference already exists.
+            // In this case, do not spawn a new reference, but overwrite the old one.
+            refNum.Index &= 0x00ffffff; // delete old plugin ID
+            refNum.ContentFile = reader.getParentFileIndices()[(int)local - 1];
+        }
+        else
+        {
+            // This is an addition by the present plugin. Set the corresponding plugin index.
+            refNum.ContentFile = reader.getIndex();
+        }
+
+        return refNum;
     }
 }

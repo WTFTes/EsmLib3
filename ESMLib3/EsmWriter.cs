@@ -1,4 +1,5 @@
-﻿using EsmLib3.Enums;
+﻿using System.Diagnostics;
+using EsmLib3.Enums;
 using EsmLib3.RefIds;
 
 namespace EsmLib3;
@@ -34,18 +35,27 @@ public class EsmWriter : IDisposable
         mCounting = true;
         BinaryWriter = writer;
 
-        startRecord(RecordName.TES3, RecordFlag.None);
-
         mHeader = data.Header;
-        mHeader.mData.records = data.Records.Count;
+        mHeader.mData.records = data.RecordCount;
         
+        startRecord(RecordName.TES3, RecordFlag.None);
+       
         mHeader.Save(this);
 
         endRecord(RecordName.TES3);
 
         foreach (var record in data.Records)
         {
-            startRecord(record.mType, record.mFlags);
+            if (record.IsDeleted ^ record.IsDeleted)
+                Debug.Write("Deleted record without deleted flag");
+
+            var flags = record.mFlags;
+            if (record.IsDeleted)
+                flags |= RecordFlag.FLAG_Deleted;
+            else
+                flags &= ~RecordFlag.FLAG_Deleted;
+
+            startRecord(record.mType, flags);
             record.Save(this);
             endRecord(record.mType);
         }
@@ -70,7 +80,7 @@ public class EsmWriter : IDisposable
     public void startSubRecord(RecordName name)
     {
         // Sub-record hierarchies are not properly supported in ESMReader. This should be fixed later.
-        if (mRecords.Count <= 1)
+        if (mRecords.Count > 1)
             throw new Exception("Sub-record hierarchies are not properly supported in ESMReader");
 
         writeName(name);
