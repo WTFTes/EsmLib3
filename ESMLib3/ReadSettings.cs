@@ -2,7 +2,7 @@
 
 public struct ReadSettings
 {
-    public List<RecordName> recordsToGet;
+    public List<RecordName> RecordsToGet;
 
     public bool SkippedRecordsToRaw;
 

@@ -153,6 +153,14 @@ public abstract class RecordBase
         return record;
     }
 
+    public T? GetData<T>() where T : AbstractRecord, new()
+    {
+        if (this is TypedRecord<T> tr)
+            return tr.Data;
+
+        return null;
+    }
+
     public abstract void Load(EsmReader reader);
     public abstract void Save(EsmWriter writer);
 }

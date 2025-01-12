@@ -113,7 +113,7 @@ public class EsmReader : IDisposable
 
             var canRaw = false;
             RecordBase record;
-            if (settings.recordsToGet == null)
+            if (settings.RecordsToGet == null)
             {
                 record = RecordBase.Create(n);
                 if (record == null)
@@ -130,7 +130,7 @@ public class EsmReader : IDisposable
                         throw new Exception($"Unknown record {n.ToMagic()}");
                 }
             }
-            else if (settings.recordsToGet.Contains(n))
+            else if (settings.RecordsToGet.Contains(n))
             {
                 record = RecordBase.Create(n);
                 if (record == null)
@@ -219,6 +219,8 @@ public class EsmReader : IDisposable
 
     public bool HasMoreRecs => mCtx.leftFile > 0;
     public bool HasMoreSubs => mCtx.leftRec > 0;
+
+    public string FileName => mCtx.FileName;
 
     private void ReportSubSizeMismatch(long want, long got)
     {

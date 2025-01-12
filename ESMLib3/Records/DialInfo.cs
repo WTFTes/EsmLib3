@@ -23,7 +23,7 @@ public class DialInfo : AbstractRecord
 
     public class DATAstruct
     {
-        public int mType { get; set; } // See Dialogue::Type
+        public Dialogue.Type mType { get; set; } // See Dialogue::Type, int
 
         // Used for dialogue responses
         // Used for journal entries
@@ -106,7 +106,7 @@ public class DialInfo : AbstractRecord
                 case RecordName.DATA:
                     reader.getHT(() =>
                     {
-                        mData.mType = reader.BinaryReader.ReadInt32();
+                        mData.mType = (Dialogue.Type)reader.BinaryReader.ReadInt32();
                         mData.mDispositionOrJournalIndex = reader.BinaryReader.ReadInt32();
                         mData.mRank = reader.BinaryReader.ReadSByte();
                         mData.mGender = (Gender)reader.BinaryReader.ReadSByte();
@@ -187,7 +187,7 @@ public class DialInfo : AbstractRecord
 
         writer.writeHNT(RecordName.DATA, () =>
         {
-            writer.Write(mData.mType);
+            writer.Write((int)mData.mType);
             writer.Write(mData.mDispositionOrJournalIndex);
             writer.Write(mData.mRank);
             writer.Write((sbyte)mData.mGender);
