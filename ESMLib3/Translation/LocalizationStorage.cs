@@ -5,6 +5,10 @@ namespace EsmLib3.Translation;
 
 public class LocalizationStorage
 {
+    private LocalizationStorage()
+    {
+    }
+    
     public TranslationStorage CellNames { get; } = new();
 
     public TranslationStorage DialogueNames { get; } = new();

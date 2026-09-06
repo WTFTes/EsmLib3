@@ -78,7 +78,7 @@ public class Dialogue : AbstractRecord
             if (mId != mStringId)
                 throw new Exception(
                     $"Trying to save Dialogue record with name \"{mStringId}\" not maching id {mId.ToDebugString()}");
-            writer.writeHNString(RecordName.NAME, mStringId);
+            writer.writeHNCString(RecordName.NAME, mStringId);
         }
         else if (writer.getFormatVersion() <= FormatVersion.MaxNameIsRefIdOnlyFormatVersion)
             writer.writeHNRefId(RecordName.NAME, mId);

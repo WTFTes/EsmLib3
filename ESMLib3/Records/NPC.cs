@@ -9,7 +9,7 @@ namespace EsmLib3.Records;
 public class Npc : AbstractRecord
 {
     [Flags]
-    public enum Flags
+    public enum Flags : int
     {
         None = 0,
         Female = 0x01,

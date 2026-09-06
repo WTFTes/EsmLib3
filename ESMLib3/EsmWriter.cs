@@ -20,6 +20,7 @@ public class EsmWriter : IDisposable
     private List<RecordData> mRecords = new();
 
     private bool mCounting;
+    
     private int mRecordCount;
 
     private BinaryWriter? BinaryWriter { get; set; }
@@ -28,7 +29,17 @@ public class EsmWriter : IDisposable
 
     public EsmVersion getVersion() => mHeader.mData.version;
 
-    public void save(BinaryWriter writer, EsmData data)
+    public void save(string path, EsmData data) => save(path, data, new());
+
+    public void save(string path, EsmData data, WriteSettings settings)
+    {
+        using var w = new BinaryWriter(File.Open(path, FileMode.Create));
+        save(w, data);
+    }
+    
+    public void save(BinaryWriter writer, EsmData data) => save(writer, data, new());
+    
+    public void save(BinaryWriter writer, EsmData data, WriteSettings settings)
     {
         mRecordCount = 0;
         mRecords.Clear();
@@ -46,6 +57,9 @@ public class EsmWriter : IDisposable
 
         foreach (var record in data.Records)
         {
+            if (record.IsDeleted && settings.SkipDeleted)
+                continue;
+            
             if (record.IsDeleted ^ record.IsDeleted)
                 Debug.Write("Deleted record without deleted flag");
 
